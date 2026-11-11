@@ -27,6 +27,7 @@
 - [局限与边界](#局限与边界)
 - [文件结构](#文件结构)
 - [开发与发布](#开发与发布)
+- [更新日志](#更新日志)
 - [License 与反馈](#license-与反馈)
 
 ## 它解决什么
@@ -241,6 +242,32 @@ onedir 版把 `--onefile` 换成 `--onedir`、`--distpath` 换成 `dist/portable
 - CI **只做构建与静态校验，不跑 `--selftest` / `--smoke`**——源码里的安装路径是作者本机的，runner 上不存在。
 - 私有仓库消耗 Actions 额度：Free 账号每月 2000 分钟，Windows runner 按 2 倍计费，单次约 6–12 分钟额度。
 - 本地模拟校验：`python tools/verify_build.py dist`（先把两种构建的 exe 与 zip 放进 `dist/`）。
+
+## 更新日志
+
+当前版本 **1.1.0**（2026-11-11）。完整记录见 [CHANGELOG.md](CHANGELOG.md)，发版时 CI 会自动取对应版本段落作为 Release 正文。
+
+### [1.1.0] - 2026-11-11
+
+**新增**
+- Qoder 中国版 / 国际版共用的 browser-connector 冲突处理：manifest 固定指向较新版本 host、按启动器 SHA-256 分代、Chrome / Edge 注册写回 HKCU、清理孤儿
+- 状态灯从 4 盏扩到 8 盏（WorkBuddy 4 + Qoder 4）
+- 命令行 `--qoder-check` / `--qoder-fix` / `--qoder-clean` / `--smoke`
+- GitHub Actions 自动构建发版（推 `v*` 标签产出单文件 exe 与便携版 zip）
+- `tools/verify_build.py` 产物静态校验
+
+**变更**
+- 更名为「双版共存管家」，明确是同一软件的国内版与国际版共存
+- README 重排（价值主张、徽章、目录、适用判断、FAQ 折叠）
+- 发布加固：版本资源、`asInvoker` manifest、`--noupx`、onedir 便携版、源码备用入口
+
+**修复**
+- CI 中 `--specpath` 子目录导致 `app.manifest` 找不到的 `FileNotFoundError`
+- README 状态灯数量表述
+
+### [1.0.0] - 2026-11-09
+
+- 首次发布：WorkBuddy CN / AI 双版本共存，`buddy-app://` 归属修复 + 更新器缓存归档 + 后台守护 + 开机自启
 
 ## License 与反馈
 

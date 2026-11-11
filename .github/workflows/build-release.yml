@@ -70,12 +70,15 @@ jobs:
       - name: Verify artifacts
         run: python tools/verify_build.py dist
 
+      - name: Prepare release notes from CHANGELOG
+        run: python tools/extract_changelog.py CHANGELOG.md "$env:RELEASE_TAG" release-notes.md
+
       - name: Publish to Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.event.inputs.tag || github.ref_name }}
           name: WBCoexist ${{ github.event.inputs.tag || github.ref_name }}
-          generate_release_notes: true
+          body_path: release-notes.md
           files: |
             dist/WBCoexist-*.exe
             dist/WBCoexist-portable-*.zip
