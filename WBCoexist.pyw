@@ -55,6 +55,45 @@ def _watch_installs():
     except Exception:
         return []
 
+def accounts_cli(move=False):
+    import accounts as A
+    out = []
+    if move:
+        argv = sys.argv[1:]
+        pos = [x for x in argv if not x.startswith("--")]
+        if len(pos) < 2:
+            out.append("用法: --move-sessions <源账号> <目标账号> [--apply]")
+        else:
+            f, t = A.resolve(pos[0]), A.resolve(pos[1])
+            if not f or not t:
+                out.append("账号无法解析: " + " / ".join(pos[:2]))
+            elif f == t:
+                out.append("源账号与目标账号相同")
+            else:
+                A.move(f, t, apply=("--apply" in argv), on_log=out.append)
+    else:
+        r = A.accounts()
+        if not r["ok"]:
+            out.append("错误: " + r["error"])
+        else:
+            out.append("数据库: " + r["db"])
+            out.append("账号数: " + str(len(r["accounts"])))
+            for a in r["accounts"]:
+                out.append("  " + a["short"] + "  " + str(a["sessions"]) + " 条会话  " + a["user_id"])
+            out.append("")
+            out.append("迁移用法（先完全退出 WorkBuddy）:")
+            out.append("  WBCoexist.exe --move-sessions <源账号前8位> <目标账号前8位> --apply")
+    text = chr(10).join(out)
+    try:
+        print(text)
+    except Exception:
+        pass
+    try:
+        with open(os.path.join(C.ROOT, "accounts.txt"), "w", encoding="utf-8") as fh:
+            fh.write(text + chr(10))
+    except Exception:
+        pass
+
 def daemon_main():
     C.log("后台守护已启动（WorkBuddy + Qoder）")
     while True:
@@ -293,6 +332,23 @@ def gui_main():
                   font=("Microsoft YaHei", 10, "bold"), height=2, relief="flat",
                   cursor="hand2").pack(side="left", fill="x", expand=True)
 
+    def on_accounts():
+        import accounts as A
+        r = A.accounts()
+        if not r["ok"]:
+            add_log("[账号] " + r["error"])
+            messagebox.showwarning("账号会话", r["error"])
+            return
+        add_log("[账号] 数据库: " + r["db"])
+        lines = []
+        for a in r["accounts"]:
+            add_log("[账号] " + a["short"] + "  " + str(a["sessions"]) + " 条会话")
+            lines.append(a["short"] + "   " + str(a["sessions"]) + " 条会话")
+        tip = "迁移需先完全退出 WorkBuddy，再运行命令行（运行时数据库被占用）"
+        add_log("[账号] " + tip)
+        add_log("[账号] 用法: WBCoexist.exe --move-sessions <源> <目标> --apply")
+        messagebox.showinfo("账号会话", chr(10).join(lines) + chr(10) + chr(10) + tip)
+
     def on_scan():
         ws = C.installed()
         qs = Q.installed()
@@ -420,10 +476,13 @@ def gui_main():
     tk.Button(btns, text="清孤儿", command=on_clean, bg="#e5e7eb",
               font=("Microsoft YaHei", 9), height=2, relief="flat",
               cursor="hand2").pack(side="left", padx=3)
-    tk.Button(btns, text="已安装", command=on_scan, bg="#e5e7eb",
+    tk.Button(btns, text="已装", command=on_scan, bg="#e5e7eb",
               font=("Microsoft YaHei", 9), height=2, relief="flat",
               cursor="hand2").pack(side="left", padx=3)
     tk.Button(btns, text="迁 移", command=on_migrate, bg="#e5e7eb",
+              font=("Microsoft YaHei", 9), height=2, relief="flat",
+              cursor="hand2").pack(side="left", padx=3)
+    tk.Button(btns, text="账号", command=on_accounts, bg="#e5e7eb",
               font=("Microsoft YaHei", 9), height=2, relief="flat",
               cursor="hand2").pack(side="left", padx=3)
 
@@ -489,6 +548,10 @@ def main():
         qoder_cli("fix")
     elif "--qoder-clean" in sys.argv:
         qoder_cli("clean")
+    elif "--accounts" in sys.argv:
+        accounts_cli()
+    elif "--move-sessions" in sys.argv:
+        accounts_cli(move=True)
     else:
         gui_main()
 
