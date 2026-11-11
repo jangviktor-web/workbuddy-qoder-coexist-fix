@@ -18,7 +18,8 @@ ROOT = app_root()
 CONFIG = os.path.join(ROOT, "config.json")
 LOGFILE = os.path.join(ROOT, "run.log")
 DEFAULT = {"primary": "CN", "guard": False, "autostart": False,
-           "paths": {"CN": "", "AI": ""}, "archive_dir": ""}
+           "paths": {"CN": "", "AI": ""}, "archive_dir": "",
+           "checkin": {"token": "", "uid": "", "enterprise_id": ""}}
 
 EXENAME = {"CN": "WorkBuddy.exe", "AI": "WorkBuddyAI.exe"}
 CANDIDATES = {

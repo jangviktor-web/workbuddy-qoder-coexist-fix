@@ -94,6 +94,37 @@ def accounts_cli(move=False):
     except Exception:
         pass
 
+def checkin_cli(do=False):
+    import checkin as K
+    c = C.cfg_load()
+    token, uid, ent = K.from_config(c)
+    out = []
+    if not token:
+        out.append("未配置签到 token。请在 config.json 的 checkin.token 填入，")
+        out.append("或运行 GUI 点「账号」按钮按提示填写。")
+        out.append("获取：F12 → Network → codebuddy.cn 请求 → Authorization: Bearer xxx / x-user-id")
+    else:
+        st = K.status(token, uid, ent)
+        out.append("签到状态: " + K.describe(st))
+        if do and st.get("ok") and not st.get("today"):
+            res = K.do_checkin(token, uid, ent)
+            out.append("签到结果: " + ("成功" if res.get("ok") else ("失败 " + str(res.get("error")))))
+            if res.get("already"):
+                out.append("（服务端提示今日已签到）")
+            out.append("签到后: " + K.describe(K.status(token, uid, ent)))
+        elif do:
+            out.append("今日无需重复签到")
+    text = chr(10).join(out)
+    try:
+        print(text)
+    except Exception:
+        pass
+    try:
+        with open(os.path.join(C.ROOT, "checkin.txt"), "w", encoding="utf-8") as fh:
+            fh.write(text + chr(10))
+    except Exception:
+        pass
+
 def daemon_main():
     C.log("后台守护已启动（WorkBuddy + Qoder）")
     while True:
@@ -167,7 +198,7 @@ def qoder_cli(mode):
 
 def gui_main():
     import tkinter as tk
-    from tkinter import scrolledtext, messagebox
+    from tkinter import scrolledtext, messagebox, simpledialog
     root = tk.Tk()
     root.title("双版共存管家  v1.1")
     root.geometry("720x800")
@@ -333,7 +364,9 @@ def gui_main():
                   cursor="hand2").pack(side="left", fill="x", expand=True)
 
     def on_accounts():
-        import accounts as A
+        import accounts as A, checkin as K
+        c = C.cfg_load()
+        token, uid, ent = K.from_config(c)
         r = A.accounts()
         if not r["ok"]:
             add_log("[账号] " + r["error"])
@@ -344,6 +377,38 @@ def gui_main():
         for a in r["accounts"]:
             add_log("[账号] " + a["short"] + "  " + str(a["sessions"]) + " 条会话")
             lines.append(a["short"] + "   " + str(a["sessions"]) + " 条会话")
+        # 签到（仅国内版）
+        if token:
+            st = K.status(token, uid, ent)
+            add_log("[签到] " + K.describe(st))
+            lines.append("")
+            lines.append("签到：" + K.describe(st))
+            if st.get("ok") and not st.get("today"):
+                if messagebox.askyesno("签到", "今日尚未签到，现在签到？"):
+                    res = K.do_checkin(token, uid, ent)
+                    msg = "已签到" if res.get("ok") else ("签到失败：" + str(res.get("error")))
+                    if res.get("already"):
+                        msg = "服务端提示今日已签到"
+                    add_log("[签到] " + msg)
+                    st2 = K.status(token, uid, ent)
+                    add_log("[签到] " + K.describe(st2))
+        else:
+            lines.append("")
+            lines.append("签到：未配置 token")
+            how = ("获取方式：" + chr(10) +
+                   "WorkBuddy 里按 F12 → Network → 任一 codebuddy.cn 请求 →" + chr(10) +
+                   "复制 Request Headers 的 Authorization（Bearer 后面那串）与 x-user-id")
+            if messagebox.askyesno("签到", "尚未配置签到 token。" + chr(10) + chr(10) + how + chr(10) + chr(10) + "现在填写？"):
+                t = simpledialog.askstring("签到 token", "粘贴 Bearer 后面的那串：", show="*")
+                u = simpledialog.askstring("签到账号", "粘贴 x-user-id（可留空）：")
+                if t:
+                    c.setdefault("checkin", {})
+                    c["checkin"]["token"] = t.strip()
+                    c["checkin"]["uid"] = (u or "").strip()
+                    C.cfg_save(c)
+                    add_log("[签到] token 已保存到 config.json")
+                    st = K.status(t.strip(), (u or "").strip(), "")
+                    add_log("[签到] " + K.describe(st))
         tip = "迁移需先完全退出 WorkBuddy，再运行命令行（运行时数据库被占用）"
         add_log("[账号] " + tip)
         add_log("[账号] 用法: WBCoexist.exe --move-sessions <源> <目标> --apply")
@@ -552,6 +617,10 @@ def main():
         accounts_cli()
     elif "--move-sessions" in sys.argv:
         accounts_cli(move=True)
+    elif "--checkin-status" in sys.argv:
+        checkin_cli()
+    elif "--checkin" in sys.argv:
+        checkin_cli(do=True)
     else:
         gui_main()
 
