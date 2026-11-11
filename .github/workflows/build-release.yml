@@ -44,12 +44,14 @@ jobs:
       - name: Syntax check
         run: python -m py_compile WBCoexist.pyw wbcore.py qoder.py
 
+      # spec 必须生成在仓库根：PyInstaller 按 spec 所在目录解析
+      # --icon / --version-file / --manifest 的相对路径，放到子目录会 FileNotFoundError。
       - name: Build onefile exe
         run: |
           python -m PyInstaller --noconsole --onefile --clean --noupx --name WBCoexist `
             --icon app.ico --version-file version_info.txt --manifest app.manifest `
             --paths . --hidden-import wbcore --hidden-import qoder `
-            --distpath dist/onefile --workpath build/onefile --specpath build/spec-onefile `
+            --distpath dist/onefile --workpath build/onefile --specpath . `
             WBCoexist.pyw
 
       - name: Build onedir portable
@@ -57,7 +59,7 @@ jobs:
           python -m PyInstaller --noconsole --onedir --clean --noupx --name WBCoexist `
             --icon app.ico --version-file version_info.txt --manifest app.manifest `
             --paths . --hidden-import wbcore --hidden-import qoder `
-            --distpath dist/portable --workpath build/onedir --specpath build/spec-onedir `
+            --distpath dist/portable --workpath build/onedir --specpath . `
             WBCoexist.pyw
 
       - name: Package release assets

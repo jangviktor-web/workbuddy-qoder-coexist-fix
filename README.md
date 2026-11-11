@@ -211,8 +211,10 @@ WBCoexist/
 python -m PyInstaller --noconsole --onefile --clean --noupx --name WBCoexist ^
   --icon app.ico --version-file version_info.txt --manifest app.manifest ^
   --paths . --hidden-import wbcore --hidden-import qoder ^
-  --distpath dist/onefile --workpath build/onefile --specpath build/spec-onefile WBCoexist.pyw
+  --distpath dist/onefile --workpath build/onefile --specpath . WBCoexist.pyw
 ```
+
+> 注意：`--specpath` 必须指向仓库根（`.`）。PyInstaller 会按 spec 文件所在目录解析 `--icon` / `--version-file` / `--manifest` 的相对路径，spec 放到子目录会导致 `FileNotFoundError`。
 
 onedir 版把 `--onefile` 换成 `--onedir`、`--distpath` 换成 `dist/portable` 即可。
 
