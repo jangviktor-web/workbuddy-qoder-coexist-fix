@@ -1,5 +1,0 @@
-数据库: C:\Users\jangviktor\.workbuddy\workbuddy.db
-源账号 2107af65 现有 318 条未删除会话（另有 139 条已删除不计入）
-目标账号 a0ea94b4 现有 241 条
-将迁移 318 条：把 sessions.user_id 改为目标账号
-（预演，未改动。加 --apply 执行）
