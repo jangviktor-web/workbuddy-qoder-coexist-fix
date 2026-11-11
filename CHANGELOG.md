@@ -4,6 +4,16 @@
 
 发版时 CI 会自动从本文件提取对应版本段落，作为 GitHub Release 的正文。
 
+## [1.2.0] - 2026-11-11
+
+### 变更
+
+- **安装位置不再硬编码**：WorkBuddy 侧改为三级发现 —— 配置覆盖（`config.json` 的 `paths`）→ 注册表卸载项（按 DisplayName 匹配 `WorkBuddy` / `WorkBuddy AI`，读 `InstallLocation` / `DisplayIcon`）→ 常见默认路径兜底。装在 `%LOCALAPPDATA%\Programs\WorkBuddy` 或任意自定义目录都能识别。
+- **数据与归档目录通用化**：数据目录用 `~/.workbuddy` / `~/.workbuddy-ai`；归档默认跟随 exe 所在目录（`<软件目录>/.updater-archive`），可用 `archive_dir` 覆盖。
+- **GUI 去掉本机绝对路径**：`sys.path`、`selftest.txt`、`qoder-cli.txt` 全部改为相对软件目录。
+- 开机自启命令指向软件自身（exe 或源码），不再写死 Python 路径。
+- 配置新增 `paths`（CN / AI 的 exe 路径覆盖）与 `archive_dir` 两个可选字段。
+
 ## [1.1.1] - 2026-11-11
 
 ### 修复
@@ -52,6 +62,7 @@
 - 后台守护（8 秒轮询，自动纠回被抢占的协议）与开机自启
 - PyInstaller 单文件 exe：免安装、无需本机 Python、无需管理员权限
 
+[1.2.0]: https://github.com/jangviktor-web/workbuddy-qoder-coexist-fix/compare/v1.1.1...v1.2.0
 [1.1.1]: https://github.com/jangviktor-web/workbuddy-qoder-coexist-fix/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/jangviktor-web/workbuddy-qoder-coexist-fix/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/jangviktor-web/workbuddy-qoder-coexist-fix/releases/tag/v1.0.0

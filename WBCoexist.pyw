@@ -4,7 +4,7 @@
 # 双击启动 GUI；--daemon 无窗口后台守护；--selftest 自检
 # 无窗口 CLI：--qoder-check / --qoder-fix / --qoder-clean
 import sys, os, time, json, threading, queue
-sys.path.insert(0, "D:/Apps/WBCoexist")
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import wbcore as C
 import qoder as Q
 
@@ -51,7 +51,7 @@ def selftest():
         print("QODER_ORPHANS:", json.dumps(qr["orphans"], ensure_ascii=False))
     out = buf.getvalue()
     try:
-        open("D:/Apps/WBCoexist/selftest.txt", "w", encoding="utf-8").write(out)
+        open(os.path.join(C.ROOT, "selftest.txt"), "w", encoding="utf-8").write(out)
     except Exception:
         pass
     try:
@@ -73,7 +73,7 @@ def qoder_cli(mode):
             out.append("[CLEAN] " + a)
     text = chr(10).join(out)
     try:
-        open("D:/Apps/WBCoexist/qoder-cli.txt", "w", encoding="utf-8").write(text)
+        open(os.path.join(C.ROOT, "qoder-cli.txt"), "w", encoding="utf-8").write(text)
     except Exception:
         pass
     try:
@@ -197,7 +197,8 @@ def gui_main():
     def on_prep():
         c = C.cfg_load()
         other = "AI" if c["primary"] == "CN" else "CN"
-        run = C.running(C.EXE[other].rsplit("/", 1)[1])
+        oe = C.exe_path(other)
+        run = C.running(os.path.basename(oe)) if oe else False
         r = C.check(c["primary"])
         add_log("[更新前准备] 另一版 " + other + " " + ("仍在运行，请先完全退出" if run else "未运行 OK"))
         add_log("[更新前准备] 更新器缓存 " + ("存在，建议点一键修复归档" if r["cache"] else "干净 OK"))
