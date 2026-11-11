@@ -12,8 +12,8 @@ API = "/v2/billing/meter"
 TIMEOUT = 15
 
 
-def _post(path, token, uid="", ent=""):
-    url = CN_BASE + API + "/" + path
+def _post(path, token, uid="", ent="", base=CN_BASE):
+    url = base + API + "/" + path
     req = urllib.request.Request(url, data=b"{}", method="POST")
     req.add_header("Authorization", "Bearer " + token)
     req.add_header("Accept", "application/json")
@@ -34,12 +34,12 @@ def _pick(data, *names):
     return None
 
 
-def status(token, uid="", ent=""):
+def status(token, uid="", ent="", base=CN_BASE):
     """查询今日签到状态与积分。"""
     last = "未知错误"
     for path in ("checkin-activity-status", "checkin-status"):
         try:
-            d = _post(path, token, uid, ent)
+            d = _post(path, token, uid, ent, base)
         except Exception as e:
             last = str(e)
             continue
@@ -58,10 +58,10 @@ def status(token, uid="", ent=""):
     return {"ok": False, "error": last}
 
 
-def do_checkin(token, uid="", ent=""):
+def do_checkin(token, uid="", ent="", base=CN_BASE):
     """执行签到；服务端提示已签到时按成功处理。"""
     try:
-        d = _post("daily-checkin", token, uid, ent)
+        d = _post("daily-checkin", token, uid, ent, base)
     except Exception as e:
         return {"ok": False, "error": str(e)}
     if d.get("code") in (0, 200):

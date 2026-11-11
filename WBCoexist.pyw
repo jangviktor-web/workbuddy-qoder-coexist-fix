@@ -96,24 +96,20 @@ def accounts_cli(move=False):
 
 def checkin_cli(do=False):
     import checkin as K
-    c = C.cfg_load()
-    token, uid, ent = K.from_config(c)
+    import wbtoken as T
     out = []
-    if not token:
-        out.append("未配置签到 token。请在 config.json 的 checkin.token 填入，")
-        out.append("或运行 GUI 点「账号」按钮按提示填写。")
-        out.append("获取：F12 → Network → codebuddy.cn 请求 → Authorization: Bearer xxx / x-user-id")
-    else:
-        st = K.status(token, uid, ent)
-        out.append("签到状态: " + K.describe(st))
+    toks = T.fetch_tokens()
+    if not toks:
+        out.append("未发现可用 token（WorkDaddy 备份不可读，config.json 也未填）")
+    for t in toks:
+        st = K.status(t["token"], t["uid"], base=t["domain"])
+        out.append(t["uid"][:8] + "  " + t.get("domain", "") + "  " + K.describe(st))
         if do and st.get("ok") and not st.get("today"):
-            res = K.do_checkin(token, uid, ent)
-            out.append("签到结果: " + ("成功" if res.get("ok") else ("失败 " + str(res.get("error")))))
+            res = K.do_checkin(t["token"], t["uid"], base=t["domain"])
+            ok = res.get("ok")
+            out.append("    签到: " + ("成功" if ok else ("失败 " + str(res.get("error")))))
             if res.get("already"):
-                out.append("（服务端提示今日已签到）")
-            out.append("签到后: " + K.describe(K.status(token, uid, ent)))
-        elif do:
-            out.append("今日无需重复签到")
+                out.append("    （服务端提示今日已签到）")
     text = chr(10).join(out)
     try:
         print(text)
@@ -377,28 +373,40 @@ def gui_main():
         for a in r["accounts"]:
             add_log("[账号] " + a["short"] + "  " + str(a["sessions"]) + " 条会话")
             lines.append(a["short"] + "   " + str(a["sessions"]) + " 条会话")
-        # 签到（仅国内版）
-        if token:
-            st = K.status(token, uid, ent)
-            add_log("[签到] " + K.describe(st))
+        # 签到（自动发现 token：WorkDaddy 备份 + config 手填）
+        try:
+            import wbtoken as T
+            toks = T.fetch_tokens()
+        except Exception:
+            toks = []
+        if toks:
             lines.append("")
-            lines.append("签到：" + K.describe(st))
-            if st.get("ok") and not st.get("today"):
-                if messagebox.askyesno("签到", "今日尚未签到，现在签到？"):
-                    res = K.do_checkin(token, uid, ent)
-                    msg = "已签到" if res.get("ok") else ("签到失败：" + str(res.get("error")))
-                    if res.get("already"):
-                        msg = "服务端提示今日已签到"
-                    add_log("[签到] " + msg)
-                    st2 = K.status(token, uid, ent)
-                    add_log("[签到] " + K.describe(st2))
+            need = []
+            for t in toks:
+                try:
+                    st = K.status(t["token"], t["uid"], base=t["domain"])
+                except Exception as e:
+                    st = {"ok": False, "error": str(e)[:60]}
+                desc = K.describe(st)
+                add_log("[签到] " + t["uid"][:8] + "  " + t["domain"] + "  " + desc)
+                lines.append("签到 " + t["uid"][:8] + "：" + desc)
+                if st.get("ok") and not st.get("today"):
+                    need.append(t)
+            if need:
+                if messagebox.askyesno("签到", "有 " + str(len(need)) + " 个账号今日未签到，现在签到？"):
+                    for t in need:
+                        res = K.do_checkin(t["token"], t["uid"], base=t["domain"])
+                        msg = "成功" if res.get("ok") else ("失败：" + str(res.get("error")))
+                        if res.get("already"):
+                            msg = "服务端提示今日已签到"
+                        add_log("[签到] " + t["uid"][:8] + "  " + msg)
         else:
             lines.append("")
-            lines.append("签到：未配置 token")
-            how = ("获取方式：" + chr(10) +
-                   "WorkBuddy 里按 F12 → Network → 任一 codebuddy.cn 请求 →" + chr(10) +
-                   "复制 Request Headers 的 Authorization（Bearer 后面那串）与 x-user-id")
-            if messagebox.askyesno("签到", "尚未配置签到 token。" + chr(10) + chr(10) + how + chr(10) + chr(10) + "现在填写？"):
+            how = ("自动获取未成功（需 WorkDaddy 账号备份，或装着 WorkBuddy）。" + chr(10) +
+                   "也可手动：WorkBuddy 里 F12 → Network → codebuddy.cn 请求 →" + chr(10) +
+                   "复制 Authorization（Bearer 后面那串）与 x-user-id 填入 config.json")
+            lines.append("签到：未发现 token")
+            if messagebox.askyesno("签到", "未发现 token。手动填写？" + chr(10) + chr(10) + how):
                 t = simpledialog.askstring("签到 token", "粘贴 Bearer 后面的那串：", show="*")
                 u = simpledialog.askstring("签到账号", "粘贴 x-user-id（可留空）：")
                 if t:
@@ -407,8 +415,6 @@ def gui_main():
                     c["checkin"]["uid"] = (u or "").strip()
                     C.cfg_save(c)
                     add_log("[签到] token 已保存到 config.json")
-                    st = K.status(t.strip(), (u or "").strip(), "")
-                    add_log("[签到] " + K.describe(st))
         tip = "迁移需先完全退出 WorkBuddy，再运行命令行（运行时数据库被占用）"
         add_log("[账号] " + tip)
         add_log("[账号] 用法: WBCoexist.exe --move-sessions <源> <目标> --apply")
