@@ -4,6 +4,12 @@
 
 发版时 CI 会自动从本文件提取对应版本段落，作为 GitHub Release 的正文。
 
+## [1.1.1] - 2026-11-11
+
+### 修复
+
+- **修复 Qoder 未运行时启动即崩溃**：`detect_intl` / `detect_cn` 对进程字典使用硬索引，Qoder 完全退出时抛 `KeyError: 'qoder.exe'`，导致 GUI 启动瞬间退出（表现为「下载的 exe 打不开」）。改为 `.get(key, [])`。
+
 ## [1.1.0] - 2026-11-11
 
 ### 新增
@@ -46,5 +52,6 @@
 - 后台守护（8 秒轮询，自动纠回被抢占的协议）与开机自启
 - PyInstaller 单文件 exe：免安装、无需本机 Python、无需管理员权限
 
+[1.1.1]: https://github.com/jangviktor-web/workbuddy-qoder-coexist-fix/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/jangviktor-web/workbuddy-qoder-coexist-fix/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/jangviktor-web/workbuddy-qoder-coexist-fix/releases/tag/v1.0.0

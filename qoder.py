@@ -242,7 +242,7 @@ def detect_intl(pids=None):
     if os.path.isfile(launcher):
         d["launcher"] = launcher
         d["hash"] = _sha256(launcher)
-    d["running"] = pids["qoder.exe"] if pids is not None else _running_pids(["Qoder.exe"])
+    d["running"] = pids.get("qoder.exe", []) if pids is not None else _running_pids(["Qoder.exe"])
     return d
 
 
@@ -263,7 +263,7 @@ def detect_cn(pids=None):
             d["launcher"] = launcher
             d["hash"] = _sha256(launcher)
     d["version"] = _version(display_version) or _version(ini.get("targetVersion"))
-    d["running"] = pids["qoder cn.exe"] if pids is not None else _running_pids(["Qoder CN.exe"])
+    d["running"] = pids.get("qoder cn.exe", []) if pids is not None else _running_pids(["Qoder CN.exe"])
     return d
 
 
