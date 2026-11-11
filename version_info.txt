@@ -14,14 +14,14 @@ VSVersionInfo(
     StringFileInfo([
       StringTable('080404B0', [
         StringStruct('CompanyName', 'jangviktor'),
-        StringStruct('FileDescription', 'WorkBuddy Qoder 共存管家'),
+        StringStruct('FileDescription', '双版共存管家 - 国内版/国际版共存修复'),
         StringStruct('FileVersion', '1.1.0.0'),
         StringStruct('InternalName', 'WBCoexist'),
         StringStruct('LegalCopyright', 'Copyright (C) 2026 jangviktor'),
         StringStruct('OriginalFilename', 'WBCoexist.exe'),
-        StringStruct('ProductName', 'WorkBuddy Qoder 共存管家'),
+        StringStruct('ProductName', '双版共存管家'),
         StringStruct('ProductVersion', '1.1.0.0'),
-        StringStruct('Comments', '修复 WorkBuddy CN/AI 与 Qoder 中国版/国际版更新后的共享资源冲突')
+        StringStruct('Comments', '让 WorkBuddy 与 Qoder 各自的国内版/国际版共存，修复更新后的共享资源冲突')
       ])
     ]),
     VarFileInfo([VarStruct('Translation', [2052, 1200])])

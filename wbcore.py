@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# WorkBuddy 共存管家 - 核心逻辑（GUI 与守护模式共用）
+# 双版共存管家 - WorkBuddy 侧核心逻辑（GUI 与守护模式共用）
 import os, json, shutil, datetime, subprocess, winreg
 
 BS = chr(92); Q = chr(34)

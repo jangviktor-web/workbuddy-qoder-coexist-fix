@@ -1,15 +1,16 @@
-# WorkBuddy · Qoder 共存管家
+# 双版共存管家
 
-**同一款软件的两个版本（国内版 / 国际版）装在同一台电脑上，更新后不再互相抢资源。**
+**让同一款软件的国内版与国际版在同一台电脑上和平共处 —— 更新后不再互相抢资源。**
 
 ![Platform](https://img.shields.io/badge/Platform-Windows%2010%20%7C%2011-0078D6?logo=windows&logoColor=white)
 ![Version](https://img.shields.io/badge/Version-1.1.0-2563eb)
 ![Runtime](https://img.shields.io/badge/Runtime-Standalone%20EXE-16a34a)
 ![Python](https://img.shields.io/badge/Python-3.10-3776AB?logo=python&logoColor=white)
 
-![WorkBuddy · Qoder 共存管家主界面](docs/screenshot.webp)
+![双版共存管家主界面](docs/screenshot.webp)
 
-> 8 盏状态灯全绿，表示 WorkBuddy 与 Qoder 两套软件的四项共享资源都正常。
+> 8 盏状态灯全绿：WorkBuddy 侧 4 盏（两个发行版的安装完整性、`buddy-app://` 归属、更新器缓存），
+> Qoder 侧 4 盏（两版版本与运行状态、连接器 host 代际、Chrome / Edge 注册）。
 > 图中那条提示是 Qoder 两版版本号不同（0.5.7 / 0.5.2），属信息提示而非故障。
 
 ## 目录
@@ -30,7 +31,10 @@
 
 ## 它解决什么
 
-同时装了 CN 版和海外版之后，大概率踩过这几种坑：
+> **先说清楚边界**：本工具**不是**让 WorkBuddy 与 Qoder 互相共存（两者本来就互不相干）。
+> 它解决的是 **WorkBuddy 的国内版 ↔ 国际版**、**Qoder 的国内版 ↔ 国际版** 这两组「同门兄弟」互相抢资源的问题。
+
+同时装了国内版和海外版之后，大概率踩过这几种坑：
 
 - 更新完其中一个，另一个打不开，或者浏览器扩展突然连不上
 - 点登录 / 深度链接，跳到了另一个版本去
@@ -111,7 +115,7 @@
 | **更新前准备** | 检查另一版是否完全退出、缓存是否干净，并列出 Qoder 两版版本与运行状态 |
 | **清理孤儿** | 删除 Qoder 旧代际 host 副本与失效中继记录（先弹确认框） |
 | **协议归属** | 单选 CN / AI，决定 `buddy-app://` 由谁接管（默认 CN） |
-| **后台守护** | 窗口开着时每 8 秒检测两套软件，被抢占自动修回（只修共享指向，不碰缓存、不做清理） |
+| **后台守护** | 窗口开着时每 8 秒检测两套软件各自的共享指向，被抢占自动修回（只修指向，不碰缓存、不做清理） |
 | **开机自启** | 写 HKCU Run，开机以无窗口守护常驻，更新完不用手动点 |
 
 ## 更新 SOP
@@ -194,6 +198,8 @@ WBCoexist/
 ├── tools/verify_build.py    CI 产物静态校验
 └── .github/workflows/       自动构建发布流程
 ```
+
+> 文件名保留技术代号 `WBCoexist`（安装路径、快捷方式、开机自启均依赖它），对外产品名为双版共存管家。
 
 ## 开发与发布
 

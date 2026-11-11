@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# WorkBuddy + Qoder 共存管家 v1.1 - 主程序
+# 双版共存管家 v1.1 - 主程序（WorkBuddy / Qoder 各自的国内版与国际版）
 # 双击启动 GUI；--daemon 无窗口后台守护；--selftest 自检
 # 无窗口 CLI：--qoder-check / --qoder-fix / --qoder-clean
 import sys, os, time, json, threading, queue
@@ -85,7 +85,7 @@ def gui_main():
     import tkinter as tk
     from tkinter import scrolledtext, messagebox
     root = tk.Tk()
-    root.title("WorkBuddy · Qoder 共存管家  v1.1")
+    root.title("双版共存管家  v1.1")
     root.geometry("720x800")
     root.resizable(False, False)
     root.configure(bg=BG)
@@ -231,7 +231,7 @@ def gui_main():
     head = tk.Frame(root, bg=BLUE, height=64)
     head.pack(fill="x")
     head.pack_propagate(False)
-    tk.Label(head, text="WorkBuddy · Qoder 共存管家", bg=BLUE, fg="#ffffff",
+    tk.Label(head, text="双版共存管家", bg=BLUE, fg="#ffffff",
              font=("Microsoft YaHei", 16, "bold")).pack(side="left", padx=18)
     tk.Label(head, text="CN / AI 双版本 · 国内 / 国际版 · 更新冲突一键处理", bg=BLUE, fg="#dbeafe",
              font=("Microsoft YaHei", 9)).pack(side="left", padx=4, pady=(6, 0))
@@ -288,7 +288,7 @@ def gui_main():
     logbox = scrolledtext.ScrolledText(root, height=9, bg="#111827", fg="#d1fae5",
                                        font=("Consolas", 9), relief="flat")
     logbox.pack(fill="both", expand=True, padx=16, pady=(0, 14))
-    add_log("共存管家已启动；点「一键修复」处理更新导致的冲突")
+    add_log("双版共存管家已启动；点「一键修复」处理更新导致的冲突")
     add_log("WorkBuddy：修 buddy-app 归属 + 归档陈旧更新缓存")
     add_log("Qoder：修共享 browser-connector（manifest / host 代际 / Chrome·Edge 注册）")
     add_log("勾选「后台守护」后，每 8 秒自动修回被抢占的归属")
