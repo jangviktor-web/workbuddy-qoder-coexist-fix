@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # 安装完成检测的最小回归测试：python tests/test_install_watch.py
-import os, sys, json, tempfile, importlib.util, unittest
+# 只测纯逻辑，不依赖本机是否装了 WorkBuddy / Qoder
+import os, sys, importlib.util, unittest
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
-import wbcore as C
 
 
 def load_app():
@@ -16,31 +16,32 @@ def load_app():
 
 
 class InstallWatch(unittest.TestCase):
-    def setUp(self):
-        self.tmp = tempfile.mktemp(suffix=".json")
-        self.old_cfg = C.CONFIG
-        C.CONFIG = self.tmp
-        self.app = load_app()
+    @classmethod
+    def setUpClass(cls):
+        cls.app = load_app()
 
-    def tearDown(self):
-        C.CONFIG = self.old_cfg
-        if os.path.isfile(self.tmp):
-            os.remove(self.tmp)
+    def test_first_sight_is_not_change(self):
+        # 冷启动首次看到不算「刚安装」
+        self.assertEqual(self.app._diff_state({}, {"wb-CN": "123"}), [])
 
-    def test_baseline_then_idle(self):
-        self.app._watch_installs()          # 建立基线
-        self.assertEqual(self.app._watch_installs(), [])
+    def test_same_is_not_change(self):
+        self.assertEqual(self.app._diff_state({"wb-CN": "1"}, {"wb-CN": "1"}), [])
 
-    def test_change_detected(self):
+    def test_changed_detected(self):
+        self.assertEqual(self.app._diff_state({"wb-CN": "1"}, {"wb-CN": "2"}), ["wb-CN"])
+
+    def test_removed_not_reported(self):
+        # 旧有新无（卸载）不该被当成安装完成
+        self.assertEqual(self.app._diff_state({"wb-CN": "1"}, {}), [])
+
+    def test_multi_keys(self):
+        old = {"wb-CN": "1", "q-intl": "5"}
+        cur = {"wb-CN": "9", "q-intl": "5", "q-cn": "7"}
+        self.assertEqual(self.app._diff_state(old, cur), ["wb-CN"])
+
+    def test_watch_does_not_raise(self):
+        # 无安装环境下也不能抛异常
         self.app._watch_installs()
-        cfg = json.load(open(self.tmp, encoding="utf-8"))
-        cfg["state"]["wb-CN"] = "1"          # 伪造「刚被安装替换」
-        json.dump(cfg, open(self.tmp, "w", encoding="utf-8"))
-        self.assertIn("wb-CN", self.app._watch_installs())
-
-    def test_empty_state_no_false_positive(self):
-        # 首次运行不应把「第一次看到」当成变化
-        self.assertEqual(self.app._watch_installs(), [])
 
 
 if __name__ == "__main__":

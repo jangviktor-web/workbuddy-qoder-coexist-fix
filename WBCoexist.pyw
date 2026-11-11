@@ -18,6 +18,11 @@ ORANGE = "#ea580c"
 BLUE = "#2563eb"
 LINE = "#e5e7eb"
 
+def _diff_state(old, cur):
+    """返回「旧有且值变了」的键；首次见到的键不算变化，消失的键也不算。"""
+    return [k for k in cur if old.get(k) and old.get(k) != cur[k]]
+
+
 def _watch_installs():
     """检测程序文件是否刚被替换（安装/更新完成），返回变化的键列表。"""
     try:
@@ -42,7 +47,7 @@ def _watch_installs():
                         pass
         except Exception:
             pass
-        changed = [k for k in cur if st.get(k) and st.get(k) != cur[k]]
+        changed = _diff_state(st, cur)
         if st != cur:
             c["state"] = cur
             C.cfg_save(c)
