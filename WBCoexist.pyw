@@ -221,6 +221,22 @@ def gui_main():
         allacts = acts + qacts
         messagebox.showinfo("完成", "一键修复已完成" + chr(10) + chr(10) + chr(10).join(allacts))
 
+    def on_scan():
+        ws = C.installed()
+        qs = Q.installed()
+        add_log("===== 已安装检测 =====")
+        add_log("WorkBuddy：" + ("未检测到安装" if not ws else str(len(ws)) + " 项"))
+        for it in ws:
+            add_log("  " + it["tag"] + "  v" + (it["version"] or "?") + "  " + it["exe"] +
+                    ("  [运行中]" if it["running"] else ""))
+        add_log("Qoder：" + ("未检测到安装" if not qs else str(len(qs)) + " 项"))
+        for it in qs:
+            add_log("  " + it["name"] + "  v" + (it["version"] or "?") + "  " + it["exe"] +
+                    ("  [在用]" if it["active"] else "  [历史]"))
+        messagebox.showinfo("已安装检测",
+                            "WorkBuddy " + str(len(ws)) + " 项 / Qoder " + str(len(qs)) + " 项" +
+                            chr(10) + "明细见日志区")
+
     def on_clean():
         qr = Q.check()
         orph = qr["orphans"]
@@ -323,13 +339,16 @@ def gui_main():
     tk.Button(btns, text="一 键 修 复", command=on_fix, bg=BLUE, fg="#ffffff",
               activebackground="#1d4ed8", font=("Microsoft YaHei", 12, "bold"),
               height=2, relief="flat", cursor="hand2").pack(side="left", fill="x", expand=True, padx=(0, 6))
-    tk.Button(btns, text="重新体检", command=lambda: (add_log("手动体检"), refresh()),
+    tk.Button(btns, text="体 检", command=lambda: (add_log("手动体检"), refresh()),
               bg="#e5e7eb", font=("Microsoft YaHei", 9), height=2, relief="flat",
               cursor="hand2").pack(side="left", padx=3)
-    tk.Button(btns, text="安装前检查", command=on_prep, bg="#e5e7eb",
+    tk.Button(btns, text="安装前", command=on_prep, bg="#e5e7eb",
               font=("Microsoft YaHei", 9), height=2, relief="flat",
               cursor="hand2").pack(side="left", padx=3)
-    tk.Button(btns, text="清理孤儿", command=on_clean, bg="#e5e7eb",
+    tk.Button(btns, text="清孤儿", command=on_clean, bg="#e5e7eb",
+              font=("Microsoft YaHei", 9), height=2, relief="flat",
+              cursor="hand2").pack(side="left", padx=3)
+    tk.Button(btns, text="已安装", command=on_scan, bg="#e5e7eb",
               font=("Microsoft YaHei", 9), height=2, relief="flat",
               cursor="hand2").pack(side="left", padx=3)
 

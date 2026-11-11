@@ -544,3 +544,31 @@ def preflight():
         lines.append(("info", "存在 %d 个旧代际 host 副本，可点「清理孤儿」" % len(rep["orphans"])))
     lines.append(("info", "安装完成后守护会自动纠回被改写的连接器指向"))
     return {"ok": not needs_fix(rep), "lines": lines}
+
+def installed():
+    # 列出 Qoder 已安装：两版在用 + <安装根>/.qoder-versions 下的历史版本
+    rep = check()
+    out = []
+    active = set()
+    for k in ("intl", "cn"):
+        d = rep[k]
+        if not d.get("exe"):
+            continue
+        active.add(os.path.normcase(os.path.normpath(d["exe"])))
+        out.append({"tag": k, "name": d["name"], "version": d.get("version") or "",
+                    "exe": d["exe"], "running": bool(d.get("running")), "active": True})
+    roots = set()
+    for k in ("intl", "cn"):
+        p = rep[k].get("exe")
+        if p:
+            roots.add(os.path.dirname(os.path.dirname(os.path.dirname(p))))
+    for r in sorted(roots):
+        vd = os.path.join(r, ".qoder-versions")
+        if not os.path.isdir(vd):
+            continue
+        for v in sorted(os.listdir(vd)):
+            f = os.path.join(vd, v, "Qoder.exe")
+            if os.path.isfile(f) and os.path.normcase(os.path.normpath(f)) not in active:
+                out.append({"tag": "extra", "name": "Qoder 历史版本", "version": v,
+                            "exe": f, "running": False, "active": False})
+    return out

@@ -132,7 +132,7 @@ def _uninstall_entries():
                     return ""
             name = val("DisplayName")
             if "workbuddy" in name.lower():
-                out.append((name, val("InstallLocation"), val("DisplayIcon")))
+                out.append((name, val("InstallLocation"), val("DisplayIcon"), val("DisplayVersion")))
             winreg.CloseKey(sk)
         winreg.CloseKey(k)
     return out
@@ -159,7 +159,7 @@ def find_install(tag):
     if ov and os.path.isfile(ov):
         return ov, "config"
     exe = EXENAME[tag]
-    for name, loc, icon in _uninstall_entries():
+    for name, loc, icon, _ver in _uninstall_entries():
         if not _match(name, tag):
             continue
         for cand in (_clean(loc), os.path.dirname(_clean(icon))):
@@ -197,7 +197,7 @@ def check(primary="CN"):
         EXE[t] = f
         out["sources"][t] = src
         out["paths"][t] = f
-        has_reg = any(_match(n, t) for n, loc, icon in entries)
+        has_reg = any(_match(n, t) for n, _loc, _icon, _v in entries)
         d = dict(exe=bool(f), reg=has_reg, lnk=os.path.isfile(LNK[t]),
                  data=os.path.isdir(DATA[t]), running=running(EXENAME[t]))
         out["apps"][t] = d
@@ -332,3 +332,47 @@ def preflight():
             lines.append(("ok", d + " 剩余 %.1f GB" % g))
     lines.append(("info", "安装完成后守护会在 8 秒内自动全量修复，也可手动点「一键修复」"))
     return {"ok": ok, "lines": lines}
+
+def _pkey(p):
+    # 路径去重键：统一分隔符与大小写，避免正反斜杠写法被当成两条
+    try:
+        return os.path.normcase(os.path.normpath(os.path.abspath(p)))
+    except OSError:
+        return (p or "").lower()
+
+
+def installed():
+    # 列出本机所有 WorkBuddy 安装：注册表卸载项 + 常见路径兜底（去重）
+    out = []
+    seen = set()
+    for name, loc, icon, ver in _uninstall_entries():
+        d = _clean(loc) or os.path.dirname(_clean(icon))
+        exe = ""
+        if d:
+            for fn in (EXENAME["AI"], EXENAME["CN"]):
+                cand = os.path.join(d, fn)
+                if os.path.isfile(cand):
+                    exe = cand
+                    break
+        if not exe:
+            ic = _clean(icon)
+            if ic.lower().endswith(".exe") and os.path.isfile(ic):
+                exe = ic
+        if not exe:
+            continue
+        k = _pkey(exe)
+        if k in seen:
+            continue
+        seen.add(k)
+        out.append({"tag": "AI" if _match(name, "AI") else "CN", "name": name,
+                    "version": ver, "exe": exe,
+                    "running": running(os.path.basename(exe)), "source": "registry"})
+    for t in ("CN", "AI"):
+        for d in CANDIDATES[t]:
+            f = os.path.join(d, EXENAME[t])
+            if os.path.isfile(f) and _pkey(f) not in seen:
+                seen.add(_pkey(f))
+                out.append({"tag": t, "name": "WorkBuddy " + t + "（无卸载项）", "version": "",
+                            "exe": f, "running": running(EXENAME[t]), "source": "path"})
+    out.sort(key=lambda x: (x["tag"], x["version"]))
+    return out

@@ -4,6 +4,16 @@
 
 发版时 CI 会自动从本文件提取对应版本段落，作为 GitHub Release 的正文。
 
+## [1.4.0] - 2026-11-11
+
+### 新增
+
+- **已安装检测**：一键扫描本机所有 WorkBuddy / Qoder 安装，列出产品名、版本号、安装路径、是否正在运行。
+  - WorkBuddy：遍历注册表卸载项（读 `DisplayVersion`）+ 常见默认路径兜底，同一路径自动去重（正反斜杠写法视为同一条）
+  - Qoder：除在用两版外，还会列出 `<安装根>/.qoder-versions/` 下**未被使用**的历史版本目录
+- GUI 新增「已安装」按钮，明细写日志、摘要弹窗
+- `tests/test_installed.py`：6 个用例（返回类型、去重、字段完整、路径规范化）
+
 ## [1.3.0] - 2026-11-11
 
 ### 新增
@@ -85,6 +95,7 @@
 - 后台守护（8 秒轮询，自动纠回被抢占的协议）与开机自启
 - PyInstaller 单文件 exe：免安装、无需本机 Python、无需管理员权限
 
+[1.4.0]: https://github.com/jangviktor-web/workbuddy-qoder-coexist-fix/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/jangviktor-web/workbuddy-qoder-coexist-fix/compare/v1.2.1...v1.3.0
 [1.2.1]: https://github.com/jangviktor-web/workbuddy-qoder-coexist-fix/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/jangviktor-web/workbuddy-qoder-coexist-fix/compare/v1.1.1...v1.2.0
