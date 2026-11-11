@@ -1,0 +1,11 @@
+# PyInstaller build cache
+_build/
+*.spec
+
+# Python runtime
+__pycache__/
+*.pyc
+
+# runtime artifacts
+run.log
+selftest.txt
