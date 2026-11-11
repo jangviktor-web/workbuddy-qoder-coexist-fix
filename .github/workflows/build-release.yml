@@ -1,0 +1,79 @@
+name: Build and Release
+
+# 推送 v* 标签自动发版；或在 Actions 页面手动运行并指定标签。
+# CI 只做构建与静态校验，不跑 --selftest / --smoke：
+# 源码里 WorkBuddy / Qoder 的安装路径是作者本机的，runner 上不存在。
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag, e.g. v1.1.0'
+        required: true
+        default: 'v1.1.0'
+
+permissions:
+  contents: write
+
+env:
+  RELEASE_TAG: ${{ github.event.inputs.tag || github.ref_name }}
+
+concurrency:
+  group: build-release-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          architecture: x64
+
+      - name: Install build dependencies
+        run: python -m pip install --disable-pip-version-check pyinstaller==6.22.3 pefile
+
+      - name: Syntax check
+        run: python -m py_compile WBCoexist.pyw wbcore.py qoder.py
+
+      - name: Build onefile exe
+        run: |
+          python -m PyInstaller --noconsole --onefile --clean --noupx --name WBCoexist `
+            --icon app.ico --version-file version_info.txt --manifest app.manifest `
+            --paths . --hidden-import wbcore --hidden-import qoder `
+            --distpath dist/onefile --workpath build/onefile --specpath build/spec-onefile `
+            WBCoexist.pyw
+
+      - name: Build onedir portable
+        run: |
+          python -m PyInstaller --noconsole --onedir --clean --noupx --name WBCoexist `
+            --icon app.ico --version-file version_info.txt --manifest app.manifest `
+            --paths . --hidden-import wbcore --hidden-import qoder `
+            --distpath dist/portable --workpath build/onedir --specpath build/spec-onedir `
+            WBCoexist.pyw
+
+      - name: Package release assets
+        run: |
+          Copy-Item dist/onefile/WBCoexist.exe "dist/WBCoexist-$env:RELEASE_TAG.exe" -Force
+          Compress-Archive -Path dist/portable/WBCoexist -DestinationPath "dist/WBCoexist-portable-$env:RELEASE_TAG.zip" -Force
+
+      - name: Verify artifacts
+        run: python tools/verify_build.py dist
+
+      - name: Publish to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.tag || github.ref_name }}
+          name: WBCoexist ${{ github.event.inputs.tag || github.ref_name }}
+          generate_release_notes: true
+          files: |
+            dist/WBCoexist-*.exe
+            dist/WBCoexist-portable-*.zip

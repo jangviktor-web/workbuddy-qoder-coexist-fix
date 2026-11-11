@@ -1,0 +1,29 @@
+# UTF-8 PyInstaller version resource
+VSVersionInfo(
+  ffi=FixedFileInfo(
+    filevers=(1, 1, 0, 0),
+    prodvers=(1, 1, 0, 0),
+    mask=0x3f,
+    flags=0x0,
+    OS=0x40004,
+    fileType=0x1,
+    subtype=0x0,
+    date=(0, 0)
+  ),
+  kids=[
+    StringFileInfo([
+      StringTable('080404B0', [
+        StringStruct('CompanyName', 'jangviktor'),
+        StringStruct('FileDescription', 'WorkBuddy Qoder 共存管家'),
+        StringStruct('FileVersion', '1.1.0.0'),
+        StringStruct('InternalName', 'WBCoexist'),
+        StringStruct('LegalCopyright', 'Copyright (C) 2026 jangviktor'),
+        StringStruct('OriginalFilename', 'WBCoexist.exe'),
+        StringStruct('ProductName', 'WorkBuddy Qoder 共存管家'),
+        StringStruct('ProductVersion', '1.1.0.0'),
+        StringStruct('Comments', '修复 WorkBuddy CN/AI 与 Qoder 中国版/国际版更新后的共享资源冲突')
+      ])
+    ]),
+    VarFileInfo([VarStruct('Translation', [2052, 1200])])
+  ]
+)

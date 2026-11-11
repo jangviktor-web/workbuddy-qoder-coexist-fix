@@ -1,5 +1,9 @@
 # PyInstaller build cache
 _build/
+_build-dir/
+dist/
+build/
+portable/
 *.spec
 
 # Python runtime
@@ -9,3 +13,4 @@ __pycache__/
 # runtime artifacts
 run.log
 selftest.txt
+qoder-cli.txt
