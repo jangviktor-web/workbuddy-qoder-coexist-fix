@@ -11,7 +11,7 @@
 Windows 10 / 11 · 免安装 · 无需管理员 · 不联网
 
 [![Platform](https://img.shields.io/badge/Platform-Windows%2010%20%7C%2011-0078D6?style=for-the-badge&logo=windows&logoColor=white)]()
-[![Version](https://img.shields.io/badge/Version-1.2.0-2563eb?style=for-the-badge)]()
+[![Version](https://img.shields.io/badge/Version-1.2.1-2563eb?style=for-the-badge)]()
 [![Runtime](https://img.shields.io/badge/Runtime-Standalone%20EXE-16a34a?style=for-the-badge)]()
 [![Python](https://img.shields.io/badge/Python-3.10-3776AB?style=for-the-badge&logo=python&logoColor=white)]()
 
@@ -285,10 +285,11 @@ Issue 与 PR 都欢迎。提交前请：
 
 ## 📜 更新日志
 
-当前版本 **1.2.0**。完整记录见 [CHANGELOG.md](CHANGELOG.md)，发版时 CI 自动取对应版本段落作为 Release 正文。
+当前版本 **1.2.1**。完整记录见 [CHANGELOG.md](CHANGELOG.md)，发版时 CI 自动取对应版本段落作为 Release 正文。
 
 | 版本 | 日期 | 要点 |
 |:---|:---|:---|
+| [1.2.1](https://github.com/jangviktor-web/workbuddy-qoder-coexist-fix/releases/tag/v1.2.1) | 2026-11-11 | Qoder host 选择改为确定性规则，不再隐性偏向国际版；新增回归测试 |
 | [1.2.0](https://github.com/jangviktor-web/workbuddy-qoder-coexist-fix/releases/tag/v1.2.0) | 2026-11-11 | 安装位置自动发现（配置 → 注册表 → 默认路径），不再绑定本机路径 |
 | [1.1.1](https://github.com/jangviktor-web/workbuddy-qoder-coexist-fix/releases/tag/v1.1.1) | 2026-11-11 | 修复 Qoder 未运行时启动崩溃（`KeyError: 'qoder.exe'`） |
 | [1.1.0](https://github.com/jangviktor-web/workbuddy-qoder-coexist-fix/releases/tag/v1.1.0) | 2026-11-11 | 新增 Qoder 双版本共存；8 盏灯；CI 自动发版；更名「双版共存管家」 |

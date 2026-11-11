@@ -267,6 +267,25 @@ def detect_cn(pids=None):
     return d
 
 
+def _pick_target(cands, host_hash=None):
+    # 按版本号选基准代际：版本高者胜；并列时依次看 当前 manifest > host 副本存在 > 正在运行 > 哈希序
+    # ponytail: 哈希序只是确定性兜底，不代表内容更优；真要按内容选得比启动器签名
+    if not cands:
+        return None
+    newest = max(_vtuple(p.get("version")) for p in cands)
+    tied = [p for p in cands if _vtuple(p.get("version")) == newest]
+    for p in tied:
+        if host_hash and host_hash == (p.get("hash") or "").lower():
+            return p
+    for p in tied:
+        if p.get("hash") and os.path.isdir(os.path.join(HOSTS, p["hash"])):
+            return p
+    for p in tied:
+        if p.get("running"):
+            return p
+    return sorted(tied, key=lambda x: (x.get("hash") or ""))[0]
+
+
 def _hash_from_host_path(path):
     if not path:
         return None
@@ -343,23 +362,14 @@ def check():
     rep["registry"]["edge_ok"] = _path_eq(rep["registry"]["edge_value"], MANIFEST)
 
     cands = [p for p in (rep["intl"], rep["cn"]) if p["launcher"] and p["hash"]]
-    if cands:
-        newest = max(_vtuple(p["version"]) for p in cands)
-        tied = [p for p in cands if _vtuple(p["version"]) == newest]
-        target = None
-        for p in tied:
-            if m["host_hash"] and m["host_hash"] == p["hash"].lower():
-                target = p
-                break
-        if target is None:
-            for p in tied:
-                if os.path.isdir(os.path.join(HOSTS, p["hash"])):
-                    target = p
-                    break
-        if target is None:
-            target = tied[0]
+    target = _pick_target(cands, m["host_hash"])
+    if target:
         rep["expected"] = {"hash": target["hash"], "path": os.path.join(HOSTS, target["hash"], "Qoder Browser Connector.exe"),
                            "version": target["version"], "source": target["name"]}
+        newest = max(_vtuple(p.get("version")) for p in cands)
+        tied = [p for p in cands if _vtuple(p.get("version")) == newest]
+        if len(tied) > 1:
+            rep["warnings"].append("两版启动器版本号相同或无法比较，已按确定性规则选定 " + target["name"] + " 的 host；扩展异常时可手动切换")
 
     exp = rep["expected"]
     if not exp["hash"]:

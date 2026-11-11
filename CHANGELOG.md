@@ -4,6 +4,16 @@
 
 发版时 CI 会自动从本文件提取对应版本段落，作为 GitHub Release 的正文。
 
+## [1.2.1] - 2026-11-11
+
+### 修复
+
+- **Qoder host 代际选择不再隐性偏向国际版**：原逻辑已按版本号选高者，但版本并列时取列表首位（国际版在前），属隐性国别优先。改为确定性规则：当前 manifest 指向 > host 副本已存在 > 正在运行 > 哈希序，并在并列时给出提示。中国版版本反超（如 0.6.0 > 0.5.7）也能正确选择。
+
+### 新增
+
+- `tests/test_pick_target.py`：7 个用例覆盖版本高低、并列确定性、缺版本号、manifest 优先、运行中优先；CI 流水线增加测试步骤。
+
 ## [1.2.0] - 2026-11-11
 
 ### 变更
@@ -62,6 +72,7 @@
 - 后台守护（8 秒轮询，自动纠回被抢占的协议）与开机自启
 - PyInstaller 单文件 exe：免安装、无需本机 Python、无需管理员权限
 
+[1.2.1]: https://github.com/jangviktor-web/workbuddy-qoder-coexist-fix/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/jangviktor-web/workbuddy-qoder-coexist-fix/compare/v1.1.1...v1.2.0
 [1.1.1]: https://github.com/jangviktor-web/workbuddy-qoder-coexist-fix/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/jangviktor-web/workbuddy-qoder-coexist-fix/compare/v1.0.0...v1.1.0
