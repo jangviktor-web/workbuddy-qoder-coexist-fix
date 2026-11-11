@@ -48,7 +48,8 @@ EXE = {"CN": "", "AI": ""}
 
 def cfg_load():
     try:
-        c = json.load(open(CONFIG, encoding="utf-8"))
+        with open(CONFIG, encoding="utf-8") as f:
+            c = json.load(f)
         d = dict(DEFAULT)
         d.update(c)
         if not isinstance(d.get("paths"), dict):
@@ -61,7 +62,8 @@ def cfg_load():
 def cfg_save(c):
     try:
         os.makedirs(ROOT, exist_ok=True)
-        json.dump(c, open(CONFIG, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
+        with open(CONFIG, "w", encoding="utf-8") as f:
+            json.dump(c, f, ensure_ascii=False, indent=2)
         return True
     except Exception:
         return False
@@ -284,3 +286,49 @@ def autostart_set(on):
         return True
     except Exception:
         return False
+
+
+def _free_gb(path):
+    try:
+        drive = os.path.splitdrive(os.path.abspath(path))[0] + os.sep
+        return shutil.disk_usage(drive).free / float(1 << 30)
+    except OSError:
+        return None
+
+
+def preflight():
+    # 安装/更新前只读检查，不改任何东西
+    lines = []
+    ok = True
+    for t in ("CN", "AI"):
+        p, src = find_install(t)
+        if p and running(EXENAME[t]):
+            lines.append(("info", "WorkBuddy " + t + " 版正在运行 —— 安装该版前请完全退出（不只是关窗口）"))
+    if os.path.isfile(CACHE):
+        ok = False
+        lines.append(("warn", "更新器缓存残留 %.1f MB —— 直接安装可能装成另一版，先点「一键修复」归档"
+                      % (os.path.getsize(CACHE) / 1048576.0)))
+    else:
+        lines.append(("ok", "更新器缓存干净"))
+    for t in ("CN", "AI"):
+        f, src = find_install(t)
+        if f:
+            mt = datetime.datetime.fromtimestamp(os.path.getmtime(f)).strftime("%Y-%m-%d %H:%M")
+            lines.append(("info", "WorkBuddy " + t + " 当前程序：" + f + "（" + mt + "，来源 " + src + "）"))
+        else:
+            lines.append(("warn", "WorkBuddy " + t + " 未找到安装 —— 装好会自动识别，也可在 config.json 的 paths 指定"))
+    drives = []
+    for d in (os.path.splitdrive(os.path.abspath(ROOT))[0], os.environ.get("SystemDrive", "C:")):
+        if d and d not in drives:
+            drives.append(d)
+    for d in drives:
+        g = _free_gb(d + os.sep)
+        if g is None:
+            continue
+        if g < 2:
+            ok = False
+            lines.append(("warn", d + " 剩余 %.1f GB —— 空间不足可能导致安装失败" % g))
+        else:
+            lines.append(("ok", d + " 剩余 %.1f GB" % g))
+    lines.append(("info", "安装完成后守护会在 8 秒内自动全量修复，也可手动点「一键修复」"))
+    return {"ok": ok, "lines": lines}

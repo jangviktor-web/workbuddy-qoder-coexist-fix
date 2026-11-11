@@ -1,5 +1,10 @@
 {
   "primary": "CN",
   "guard": false,
-  "autostart": false
+  "autostart": false,
+  "paths": {
+    "CN": "",
+    "AI": ""
+  },
+  "archive_dir": ""
 }

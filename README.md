@@ -11,7 +11,7 @@
 Windows 10 / 11 · 免安装 · 无需管理员 · 不联网
 
 [![Platform](https://img.shields.io/badge/Platform-Windows%2010%20%7C%2011-0078D6?style=for-the-badge&logo=windows&logoColor=white)]()
-[![Version](https://img.shields.io/badge/Version-1.2.1-2563eb?style=for-the-badge)]()
+[![Version](https://img.shields.io/badge/Version-1.3.0-2563eb?style=for-the-badge)]()
 [![Runtime](https://img.shields.io/badge/Runtime-Standalone%20EXE-16a34a?style=for-the-badge)]()
 [![Python](https://img.shields.io/badge/Python-3.10-3776AB?style=for-the-badge&logo=python&logoColor=white)]()
 
@@ -101,7 +101,7 @@ Windows 10 / 11 · 免安装 · 无需管理员 · 不联网
 |:---|:---|
 | **一键修复** | WorkBuddy 修协议归属 + 归档陈旧缓存；Qoder 修 manifest / host 代际 / 浏览器注册；完成后自动复检并弹结果 |
 | **重新体检** | 刷新 8 盏状态灯 |
-| **更新前准备** | 检查另一版是否完全退出、缓存是否干净，并列出 Qoder 两版版本与运行状态 |
+| **安装前检查** | 两套软件一次查完：另一版是否仍在运行、更新器缓存是否残留、Qoder manifest 与 Chrome/Edge 注册、系统盘与软件盘剩余空间、各版当前版本与安装位置；给出「可以安装 / 建议先处理」结论 |
 | **清理孤儿** | 删除 Qoder 旧代际 host 副本与失效中继记录（先弹确认框） |
 | **协议归属** | 单选 CN / AI，决定 `buddy-app://` 由谁接管（默认 CN） |
 | **后台守护** | 窗口开着时每 8 秒检测两套软件各自的共享指向，被抢占自动修回（只修指向，不碰缓存、不做清理） |
@@ -154,9 +154,9 @@ Windows 10 / 11 · 免安装 · 无需管理员 · 不联网
 
 ## 🔄 更新 SOP
 
-1. **更新前**：另一版完全退出（不只是关窗口），点「更新前准备」检查
-2. **正常更新**
-3. **更新后**：点一次「一键修复」（开了开机自启可省略，守护会自动纠回）
+1. **安装前**：点「安装前检查」—— 查另一版是否还在跑、缓存是否残留、manifest / 浏览器注册是否完好、磁盘够不够，给出「可以安装 / 建议先处理」
+2. **安装 / 更新**：正常走安装器，另一版务必先**完全退出**
+3. **安装后**：守护在 8 秒内检测到程序被替换，自动全量修复；也可手动点「一键修复」
 4. **Qoder 两版同版本后**：各启动一次，让连接器代际收敛
 
 ---
@@ -285,10 +285,11 @@ Issue 与 PR 都欢迎。提交前请：
 
 ## 📜 更新日志
 
-当前版本 **1.2.1**。完整记录见 [CHANGELOG.md](CHANGELOG.md)，发版时 CI 自动取对应版本段落作为 Release 正文。
+当前版本 **1.3.0**。完整记录见 [CHANGELOG.md](CHANGELOG.md)，发版时 CI 自动取对应版本段落作为 Release 正文。
 
 | 版本 | 日期 | 要点 |
 |:---|:---|:---|
+| [1.3.0](https://github.com/jangviktor-web/workbuddy-qoder-coexist-fix/releases/tag/v1.3.0) | 2026-11-11 | 新增安装前检查（6+ 项）与安装完成自动修复（mtime 检测） |
 | [1.2.1](https://github.com/jangviktor-web/workbuddy-qoder-coexist-fix/releases/tag/v1.2.1) | 2026-11-11 | Qoder host 选择改为确定性规则，不再隐性偏向国际版；新增回归测试 |
 | [1.2.0](https://github.com/jangviktor-web/workbuddy-qoder-coexist-fix/releases/tag/v1.2.0) | 2026-11-11 | 安装位置自动发现（配置 → 注册表 → 默认路径），不再绑定本机路径 |
 | [1.1.1](https://github.com/jangviktor-web/workbuddy-qoder-coexist-fix/releases/tag/v1.1.1) | 2026-11-11 | 修复 Qoder 未运行时启动崩溃（`KeyError: 'qoder.exe'`） |

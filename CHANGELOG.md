@@ -4,6 +4,19 @@
 
 发版时 CI 会自动从本文件提取对应版本段落，作为 GitHub Release 的正文。
 
+## [1.3.0] - 2026-11-11
+
+### 新增
+
+- **安装前检查**（原「更新前准备」升级）：一次检查两套软件 —— 另一版是否仍在运行、更新器缓存是否残留、Qoder 共享 manifest 与 Chrome/Edge 注册是否完好、系统盘与软件盘剩余空间、各版当前版本与安装位置。给出「可以安装 / 建议先处理」的结论。
+- **安装完成自动修复**：守护每 8 秒比对程序文件 mtime，发现安装器替换过 exe（即安装/更新完成）后，自动执行一次全量修复（协议归属 + 缓存归档 + Qoder 连接器），不用手动点。
+- `tests/test_install_watch.py`：3 个用例覆盖基线建立、变化检测、冷启动不误报。
+
+### 变更
+
+- 按钮「更新前准备」更名为「安装前检查」，检查项由 2 项扩展到 6 项以上。
+- `cfg_load` / `cfg_save` 改用 `with open()`，消除文件句柄未关闭告警。
+
 ## [1.2.1] - 2026-11-11
 
 ### 修复
@@ -72,6 +85,7 @@
 - 后台守护（8 秒轮询，自动纠回被抢占的协议）与开机自启
 - PyInstaller 单文件 exe：免安装、无需本机 Python、无需管理员权限
 
+[1.3.0]: https://github.com/jangviktor-web/workbuddy-qoder-coexist-fix/compare/v1.2.1...v1.3.0
 [1.2.1]: https://github.com/jangviktor-web/workbuddy-qoder-coexist-fix/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/jangviktor-web/workbuddy-qoder-coexist-fix/compare/v1.1.1...v1.2.0
 [1.1.1]: https://github.com/jangviktor-web/workbuddy-qoder-coexist-fix/compare/v1.1.0...v1.1.1

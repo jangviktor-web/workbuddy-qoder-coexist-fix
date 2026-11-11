@@ -517,3 +517,30 @@ def qoder_line(p):
     state = "运行中" if p["running"] else "未运行"
     ver = p["version"] or "?"
     return "%s %s  [%s]" % (p["name"], ver, state)
+
+
+def preflight():
+    # 安装/更新前只读检查，不改任何东西
+    lines = []
+    rep = check()
+    for k in ("intl", "cn"):
+        d = rep[k]
+        if d.get("running"):
+            lines.append(("info", d["name"] + " 正在运行 —— 安装该版前请完全退出（不只是关窗口）"))
+        lines.append(("info", "%s 当前版本 %s，host 代际 %s"
+                      % (d["name"], d.get("version") or "未知", (d.get("hash") or "")[:8] or "无")))
+    m = rep["manifest"]
+    if not m["exists"]:
+        lines.append(("warn", "共享 manifest 不存在 —— 两版各启动一次即可生成，建议装完再检查"))
+    elif not m["origins_ok"]:
+        lines.append(("warn", "manifest 的 allowed_origins 不完整 —— 建议先点「一键修复」"))
+    else:
+        lines.append(("ok", "共享 manifest 正常，两个扩展 ID 都在"))
+    if rep["registry"]["chrome_ok"] and rep["registry"]["edge_ok"]:
+        lines.append(("ok", "Chrome / Edge 注册指向正确"))
+    else:
+        lines.append(("warn", "Chrome / Edge 注册指向不正确 —— 建议先点「一键修复」"))
+    if rep["orphans"]:
+        lines.append(("info", "存在 %d 个旧代际 host 副本，可点「清理孤儿」" % len(rep["orphans"])))
+    lines.append(("info", "安装完成后守护会自动纠回被改写的连接器指向"))
+    return {"ok": not needs_fix(rep), "lines": lines}

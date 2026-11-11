@@ -18,11 +18,51 @@ ORANGE = "#ea580c"
 BLUE = "#2563eb"
 LINE = "#e5e7eb"
 
+def _watch_installs():
+    """检测程序文件是否刚被替换（安装/更新完成），返回变化的键列表。"""
+    try:
+        c = C.cfg_load()
+        st = c.get("state") or {}
+        cur = {}
+        for t in ("CN", "AI"):
+            p = C.exe_path(t)
+            if p and os.path.isfile(p):
+                try:
+                    cur["wb-" + t] = str(int(os.path.getmtime(p)))
+                except OSError:
+                    pass
+        try:
+            qr = Q.check()
+            for k in ("intl", "cn"):
+                p = qr[k].get("exe")
+                if p and os.path.isfile(p):
+                    try:
+                        cur["q-" + k] = str(int(os.path.getmtime(p)))
+                    except OSError:
+                        pass
+        except Exception:
+            pass
+        changed = [k for k in cur if st.get(k) and st.get(k) != cur[k]]
+        if st != cur:
+            c["state"] = cur
+            C.cfg_save(c)
+        return changed
+    except Exception:
+        return []
+
 def daemon_main():
     C.log("后台守护已启动（WorkBuddy + Qoder）")
     while True:
         try:
             c = C.cfg_load()
+            ch = _watch_installs()
+            if ch:
+                try:
+                    C.fix(C.check(c["primary"]), c["primary"], apply=True)
+                    Q.daemon_tick()
+                    C.log("检测到安装/更新完成：" + ", ".join(ch) + "，已自动全量修复")
+                except Exception as e:
+                    C.log("安装后自动修复失败: " + str(e))
             msg = C.daemon_tick(c)
             if msg:
                 C.log(msg)
@@ -195,18 +235,20 @@ def gui_main():
         refresh()
 
     def on_prep():
-        c = C.cfg_load()
-        other = "AI" if c["primary"] == "CN" else "CN"
-        oe = C.exe_path(other)
-        run = C.running(os.path.basename(oe)) if oe else False
-        r = C.check(c["primary"])
-        add_log("[更新前准备] 另一版 " + other + " " + ("仍在运行，请先完全退出" if run else "未运行 OK"))
-        add_log("[更新前准备] 更新器缓存 " + ("存在，建议点一键修复归档" if r["cache"] else "干净 OK"))
-        qr = Q.check()
-        add_log("[更新前准备] Qoder " + Q.qoder_line(qr["intl"]))
-        add_log("[更新前准备] Qoder " + Q.qoder_line(qr["cn"]))
-        add_log("[更新前准备] 更新完成后再点一次 一键修复")
+        pr = C.preflight()
+        qp = Q.preflight()
+        add_log("===== 安装前检查：WorkBuddy =====")
+        for lv, txt in pr["lines"]:
+            add_log(("  [注意] " if lv == "warn" else "  - ") + txt)
+        add_log("===== 安装前检查：Qoder =====")
+        for lv, txt in qp["lines"]:
+            add_log(("  [注意] " if lv == "warn" else "  - ") + txt)
+        ok = pr["ok"] and qp["ok"]
+        add_log("===== 结论：" + ("可以开始安装" if ok else "建议先处理上面的 [注意] 项再安装") + " =====")
         refresh()
+        messagebox.showinfo("安装前检查",
+                            ("可以开始安装。" if ok else "建议先处理注意事项。") + chr(10) + chr(10) +
+                            "详细结果见日志区。")
 
     def on_primary():
         c = C.cfg_load()
@@ -279,7 +321,7 @@ def gui_main():
     tk.Button(btns, text="重新体检", command=lambda: (add_log("手动体检"), refresh()),
               bg="#e5e7eb", font=("Microsoft YaHei", 9), height=2, relief="flat",
               cursor="hand2").pack(side="left", padx=3)
-    tk.Button(btns, text="更新前准备", command=on_prep, bg="#e5e7eb",
+    tk.Button(btns, text="安装前检查", command=on_prep, bg="#e5e7eb",
               font=("Microsoft YaHei", 9), height=2, relief="flat",
               cursor="hand2").pack(side="left", padx=3)
     tk.Button(btns, text="清理孤儿", command=on_clean, bg="#e5e7eb",
@@ -298,6 +340,15 @@ def gui_main():
         while True:
             c = C.cfg_load()
             if c.get("guard"):
+                ch = _watch_installs()
+                if ch:
+                    try:
+                        C.fix(C.check(c["primary"]), c["primary"], apply=True)
+                        Q.daemon_tick()
+                        q.put(C.log("[守护] 检测到安装/更新完成：" + ", ".join(ch) + "，已自动全量修复"))
+                        q.put("[refresh]")
+                    except Exception as e:
+                        q.put(C.log("[守护] 安装后自动修复失败: " + str(e)))
                 m = C.daemon_tick(c)
                 if m:
                     q.put(C.log("[守护] " + m))
