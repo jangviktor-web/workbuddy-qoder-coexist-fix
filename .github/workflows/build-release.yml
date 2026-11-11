@@ -49,6 +49,7 @@ jobs:
           python tests/test_pick_target.py
           python tests/test_install_watch.py
           python tests/test_installed.py
+          python tests/test_migrate.py
 
       # spec 必须生成在仓库根：PyInstaller 按 spec 所在目录解析
       # --icon / --version-file / --manifest 的相对路径，放到子目录会 FileNotFoundError。

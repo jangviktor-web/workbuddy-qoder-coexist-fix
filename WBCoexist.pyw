@@ -221,6 +221,78 @@ def gui_main():
         allacts = acts + qacts
         messagebox.showinfo("完成", "一键修复已完成" + chr(10) + chr(10) + chr(10).join(allacts))
 
+    def on_migrate():
+        import migrate as M
+        r = M.scan()
+        cand = [it for it in r["items"] if it["kind"] in ("app", "data") and not it["migrated"]]
+        if not cand:
+            messagebox.showinfo("迁移", "没有可迁移的项。" + chr(10) + "若数据目录已是指向其他盘的联接，则无需再迁。")
+            return
+        win = tk.Toplevel(root)
+        win.title("无损迁移到其他磁盘")
+        win.geometry("760x560")
+        win.configure(bg=BG)
+        tk.Label(win, text="勾选要迁移的项（路径均来自实测：注册表 / product.json / 特征文件）",
+                 bg=BG, fg=SUB, font=("Microsoft YaHei", 9)).pack(anchor="w", padx=16, pady=(12, 4))
+        box = tk.Frame(win, bg=BG)
+        box.pack(fill="x", padx=16)
+        vars_ = []
+        for it in cand:
+            v = tk.IntVar(value=0)
+            tk.Checkbutton(box, text="[" + it["kind"] + "] " + it["product"] + "   " + it["path"],
+                           variable=v, bg=BG, anchor="w",
+                           font=("Microsoft YaHei", 9)).pack(fill="x")
+            vars_.append((it, v))
+        drives = [d + ":" + chr(92) for d in "CDEFGHIJ" if os.path.exists(d + ":" + chr(92))]
+        dv = tk.StringVar(value=drives[-1] if drives else "")
+        row = tk.Frame(win, bg=BG)
+        row.pack(fill="x", padx=16, pady=10)
+        tk.Label(row, text="目标根目录", bg=BG, fg=SUB,
+                 font=("Microsoft YaHei", 9)).pack(side="left")
+        tk.Entry(row, textvariable=dv, width=24, font=("Consolas", 10)).pack(side="left", padx=6)
+        tk.Label(row, text="（如 E:/MyData）", bg=BG, fg=SUB,
+                 font=("Microsoft YaHei", 8)).pack(side="left")
+        tip = "流程：复制 → 校验文件数 → 原目录改名 .bak → 建立目录联接 → 写入探针验证。"
+        tip2 = "不会删除任何文件；失败自动回滚；.bak 保留，确认无误后可自行清理。"
+        tk.Label(win, text=tip + chr(10) + tip2, bg=BG, fg=SUB, justify="left",
+                 font=("Microsoft YaHei", 9)).pack(anchor="w", padx=16, pady=(0, 8))
+
+        def run():
+            keys = [it["key"] for it, v in vars_ if v.get()]
+            if not keys:
+                messagebox.showwarning("迁移", "请先勾选至少一项")
+                return
+            plans = M.plan(keys, dv.get())
+            ok, lines = M.precheck(plans)
+            for lv, m in lines:
+                add_log("[迁移检查] " + ("[!] " if lv == "error" else "") + m)
+            if not ok:
+                messagebox.showerror("迁移", "前置检查未通过，已停止。详见日志区。")
+                return
+            ask = "将迁移 " + str(len(plans)) + " 项到 " + dv.get() + chr(10) + chr(10) + "不会删除文件；原目录改名 .bak 保留。"
+            if not messagebox.askyesno("确认迁移", ask):
+                return
+            win.destroy()
+
+            def worker():
+                done = 0
+                for p in plans:
+                    try:
+                        if M.migrate_one(p, apply=True, on_log=add_log):
+                            done += 1
+                    except Exception as e:
+                        add_log("[迁移] 异常: " + str(e))
+                add_log("[迁移] 完成 " + str(done) + "/" + str(len(plans)) + " 项")
+                q.put("[refresh]")
+
+            threading.Thread(target=worker, daemon=True).start()
+
+        btnrow = tk.Frame(win, bg=BG)
+        btnrow.pack(fill="x", padx=16)
+        tk.Button(btnrow, text="开始迁移", command=run, bg=BLUE, fg="#ffffff",
+                  font=("Microsoft YaHei", 10, "bold"), height=2, relief="flat",
+                  cursor="hand2").pack(side="left", fill="x", expand=True)
+
     def on_scan():
         ws = C.installed()
         qs = Q.installed()
@@ -349,6 +421,9 @@ def gui_main():
               font=("Microsoft YaHei", 9), height=2, relief="flat",
               cursor="hand2").pack(side="left", padx=3)
     tk.Button(btns, text="已安装", command=on_scan, bg="#e5e7eb",
+              font=("Microsoft YaHei", 9), height=2, relief="flat",
+              cursor="hand2").pack(side="left", padx=3)
+    tk.Button(btns, text="迁 移", command=on_migrate, bg="#e5e7eb",
               font=("Microsoft YaHei", 9), height=2, relief="flat",
               cursor="hand2").pack(side="left", padx=3)
 

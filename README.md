@@ -11,7 +11,7 @@
 Windows 10 / 11 · 免安装 · 无需管理员 · 不联网
 
 [![Platform](https://img.shields.io/badge/Platform-Windows%2010%20%7C%2011-0078D6?style=for-the-badge&logo=windows&logoColor=white)]()
-[![Version](https://img.shields.io/badge/Version-1.4.0-2563eb?style=for-the-badge)]()
+[![Version](https://img.shields.io/badge/Version-1.5.0-2563eb?style=for-the-badge)]()
 [![Runtime](https://img.shields.io/badge/Runtime-Standalone%20EXE-16a34a?style=for-the-badge)]()
 [![Python](https://img.shields.io/badge/Python-3.10-3776AB?style=for-the-badge&logo=python&logoColor=white)]()
 
@@ -101,6 +101,7 @@ Windows 10 / 11 · 免安装 · 无需管理员 · 不联网
 |:---|:---|
 | **一键修复** | WorkBuddy 修协议归属 + 归档陈旧缓存；Qoder 修 manifest / host 代际 / 浏览器注册；完成后自动复检并弹结果 |
 | **重新体检** | 刷新 8 盏状态灯 |
+| **无损迁移** | 勾选软件本体 / 数据目录 → 复制 → 校验 → 原目录改名 `.bak` → 建立目录联接 → 探针验证；失败自动回滚，不删任何文件。路径全部实测（注册表 / product.json / 特征文件 / 会话 cwd） |
 | **已安装检测** | 扫描本机所有 WorkBuddy / Qoder 安装，列出产品名、版本、路径、是否运行；Qoder 还会列出 `.qoder-versions` 下未在用的历史版本 |
 | **安装前检查** | 两套软件一次查完：另一版是否仍在运行、更新器缓存是否残留、Qoder manifest 与 Chrome/Edge 注册、系统盘与软件盘剩余空间、各版当前版本与安装位置；给出「可以安装 / 建议先处理」结论 |
 | **清理孤儿** | 删除 Qoder 旧代际 host 副本与失效中继记录（先弹确认框） |
@@ -286,10 +287,11 @@ Issue 与 PR 都欢迎。提交前请：
 
 ## 📜 更新日志
 
-当前版本 **1.4.0**。完整记录见 [CHANGELOG.md](CHANGELOG.md)，发版时 CI 自动取对应版本段落作为 Release 正文。
+当前版本 **1.5.0**。完整记录见 [CHANGELOG.md](CHANGELOG.md)，发版时 CI 自动取对应版本段落作为 Release 正文。
 
 | 版本 | 日期 | 要点 |
 |:---|:---|:---|
+| [1.5.0](https://github.com/jangviktor-web/workbuddy-qoder-coexist-fix/releases/tag/v1.5.0) | 2026-11-11 | 新增位置探测（实测证据）与无损迁移（零删除 + 可回滚） |
 | [1.4.0](https://github.com/jangviktor-web/workbuddy-qoder-coexist-fix/releases/tag/v1.4.0) | 2026-11-11 | 新增「已安装检测」，列出本机全部安装与 Qoder 历史版本目录 |
 | [1.3.0](https://github.com/jangviktor-web/workbuddy-qoder-coexist-fix/releases/tag/v1.3.0) | 2026-11-11 | 新增安装前检查（6+ 项）与安装完成自动修复（mtime 检测） |
 | [1.2.1](https://github.com/jangviktor-web/workbuddy-qoder-coexist-fix/releases/tag/v1.2.1) | 2026-11-11 | Qoder host 选择改为确定性规则，不再隐性偏向国际版；新增回归测试 |

@@ -4,6 +4,24 @@
 
 发版时 CI 会自动从本文件提取对应版本段落，作为 GitHub Release 的正文。
 
+## [1.5.0] - 2026-11-11
+
+### 新增
+
+- **位置探测 + 无损迁移**（新增 `migrate.py`）：所有路径靠实测证据发现，不做假设。
+  - 软件本体：注册表卸载项 + Qoder `<安装根>/.qoder-versions/` 版本目录
+  - Qoder 数据目录名：读安装目录 `resources/product.json` 的 `dataDirectoryName`（本机实测为 `com.qoder.app.stable` / `com.qodercn.app.stable`）
+  - WorkBuddy 数据目录：按 `projects/` + `MEMORY.md` 特征文件确认
+  - 会话：`<data>/projects/*/*.jsonl`
+  - 项目路径：从会话 jsonl 的 `cwd` 字段读出，**不反解目录名**
+- **迁移流程**（零删除）：复制 → 校验文件数 → 原目录改名 `.bak` → `mklink /J` → 写探针验证；失败自动回滚；`.bak` 保留待确认，不删除任何文件
+- GUI 新增「迁移」按钮：勾选条目 + 目标根目录 → 前置检查（已迁移 / 进程在跑 / 目标盘空间 ≥3 GB）→ 确认 → 后台线程执行
+- `tests/test_migrate.py`：7 个用例
+
+### 说明
+
+- 会话与项目都在数据目录内部，不单独迁移；用户自己的项目文件夹工具不碰。
+
 ## [1.4.0] - 2026-11-11
 
 ### 新增
@@ -95,6 +113,7 @@
 - 后台守护（8 秒轮询，自动纠回被抢占的协议）与开机自启
 - PyInstaller 单文件 exe：免安装、无需本机 Python、无需管理员权限
 
+[1.5.0]: https://github.com/jangviktor-web/workbuddy-qoder-coexist-fix/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/jangviktor-web/workbuddy-qoder-coexist-fix/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/jangviktor-web/workbuddy-qoder-coexist-fix/compare/v1.2.1...v1.3.0
 [1.2.1]: https://github.com/jangviktor-web/workbuddy-qoder-coexist-fix/compare/v1.2.0...v1.2.1
