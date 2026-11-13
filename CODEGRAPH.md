@@ -172,7 +172,7 @@ CI 现跑 6 组测试并做 `py_compile` 语法检查；`tools/verify_build.py` 
 - 打包：PyInstaller 6.22.3 `--noconsole --onefile`（另有 onedir 便携版），`--noupx`，嵌入 `version_info.txt` + `app.manifest`。所有业务模块需 `--hidden-import`；`wbtoken` 依赖 `cryptography`（AES-GCM），打包时必须显式带上。
 - `--specpath .` 是硬要求：PyInstaller 按 spec 所在目录解析 `--icon` / `--version-file` / `--manifest`，放子目录会 `FileNotFoundError`。
 - CI：`windows-latest` + Python 3.10，推 `v*` 标签触发；Release 正文由 `tools/extract_changelog.py` 从 `CHANGELOG.md` 取对应版本段落。
-- 日常改动只 commit；**打 tag / 发 Release 需用户明确要求**。
+- 发版由维护者手动打 `v*` 标签触发；日常改动直接提交到 `master`。
 
 ## 9. 已知未接入
 
