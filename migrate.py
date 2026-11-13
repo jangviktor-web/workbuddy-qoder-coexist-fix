@@ -2,7 +2,8 @@
 # -*- coding: utf-8 -*-
 # 位置探测 + 无损迁移。所有路径都靠实测证据发现，不做假设。
 # 证据来源：注册表卸载项 / 安装目录的 product.json / 数据目录特征文件 / 会话 jsonl 的 cwd。
-import os, sys, json, glob, shutil, subprocess, datetime
+import os, sys, json, glob, shutil, datetime
+import wbcore as C
 
 HOME = os.path.expanduser("~")
 LOCAL = os.environ.get("LOCALAPPDATA") or os.path.join(HOME, "AppData", "Local")
@@ -185,16 +186,7 @@ def _scan_cwd(sess_root, product):
 def _running(product):
     names = {"WorkBuddy": ["WorkBuddy.exe", "WorkBuddyAI.exe"],
              "Qoder": ["Qoder.exe", "Qoder CN.exe"]}.get(product, [])
-    try:
-        out = subprocess.run(["tasklist", "/FO", "CSV", "/NH"],
-                             capture_output=True, text=True, errors="replace", timeout=20).stdout
-    except Exception:
-        return []
-    hit = []
-    for line in out.splitlines():
-        cols = [c.strip('"') for c in line.split('","')]
-        if cols and cols[0].strip('"') in names:
-            hit.append(cols[0].strip('"'))
+    hit = [n for n in C.process_names() if n in names]
     return sorted(set(hit))
 
 
@@ -269,10 +261,18 @@ def precheck(plans):
     return ok, lines
 
 
-def migrate_one(p, apply=False, on_log=print):
+def migrate_one(p, apply=False, on_log=print, on_step=None):
     """零删除迁移：复制 → 校验 → 原名改 .bak → mklink /J → 探针 → 失败回滚。
     ponytail: 不删任何东西，.bak 留给你确认后再清。"""
     src, dst = p["src"], p["dst"]
+
+    def step(name):
+        if on_step:
+            try:
+                on_step(name)
+            except Exception:
+                pass
+
     if p["migrated"]:
         on_log("跳过（已迁移）: " + src)
         return False
@@ -284,17 +284,20 @@ def migrate_one(p, apply=False, on_log=print):
         return False
     on_log("计划: " + src + "  ->  " + dst)
     if not apply:
+        step("preview")
         return True
 
     os.makedirs(os.path.dirname(dst), exist_ok=True)
     # 1 复制
-    r = subprocess.run(["robocopy", src, dst, "/E", "/COPY:DAT", "/DCOPY:DAT", "/XJ",
-                        "/R:1", "/W:1", "/NFL", "/NDL", "/NJH", "/NJS", "/NP"],
-                       capture_output=True, text=True, errors="replace")
+    step("copy")
+    r = C.run_hidden(["robocopy", src, dst, "/E", "/COPY:DAT", "/DCOPY:DAT", "/XJ",
+                      "/R:1", "/W:1", "/NFL", "/NDL", "/NJH", "/NJS", "/NP"],
+                     capture_output=True, text=True, errors="replace")
     if r.returncode >= 8:
         on_log("复制失败 (robocopy %d)" % r.returncode)
         return False
     # 2 校验文件数
+    step("verify")
     n_src = sum(len(fs) for _r, _d, fs in os.walk(src))
     n_dst = sum(len(fs) for _r, _d, fs in os.walk(dst))
     if n_src != n_dst:
@@ -303,6 +306,7 @@ def migrate_one(p, apply=False, on_log=print):
     on_log("复制完成，%d 个文件" % n_dst)
 
     # 3 原名改 .bak
+    step("rename")
     bak = src + ".bak"
     if os.path.exists(bak):
         on_log("回退目录已存在，跳过: " + bak)
@@ -314,14 +318,16 @@ def migrate_one(p, apply=False, on_log=print):
         return False
 
     # 4 建联接
-    rc = subprocess.run(["cmd", "/c", "mklink", "/J", src, dst],
-                        capture_output=True, text=True, errors="replace").returncode
+    step("link")
+    rc = C.run_hidden(["cmd", "/c", "mklink", "/J", src, dst],
+                      capture_output=True, text=True, errors="replace").returncode
     if rc != 0:
         os.rename(bak, src)
         on_log("建立联接失败，已回滚")
         return False
 
     # 5 探针
+    step("probe")
     probe = os.path.join(src, ".__migrate_probe__")
     try:
         with open(probe, "w") as f:
@@ -333,5 +339,6 @@ def migrate_one(p, apply=False, on_log=print):
         ok = False
     if not ok:
         on_log("探针验证失败（写入未落到目标盘）")
+    step("done")
     on_log("迁移完成: " + src + "  ->  " + dst + "；原目录保留为 " + bak)
     return True

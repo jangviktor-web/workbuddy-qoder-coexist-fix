@@ -7,6 +7,11 @@
     "AI": ""
   },
   "archive_dir": "",
+  "checkin": {
+    "token": "",
+    "uid": "",
+    "enterprise_id": ""
+  },
   "state": {
     "wb-CN": "1793093492",
     "wb-AI": "1793289244",

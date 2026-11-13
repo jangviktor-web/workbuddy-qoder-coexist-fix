@@ -1,5 +1,7 @@
 @echo off
 chcp 65001 >nul
-"D:\Apps\WBCoexist\WBCoexist.exe" --selftest
+set "EXE=D:\Apps\WBCoexist\portable\WBCoexist\WBCoexist.exe"
+if not exist "%EXE%" set "EXE=D:\Apps\WBCoexist\WBCoexist.exe"
+"%EXE%" --selftest
 type "D:\Apps\WBCoexist\selftest.txt"
 pause

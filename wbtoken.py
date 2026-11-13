@@ -2,8 +2,9 @@
 # -*- coding: utf-8 -*-
 # 从 WorkBuddy / WorkDaddy 的本地数据实测提取签到用的 accessToken。
 # WorkBuddy 安装位置靠 wbcore.installed() 实测（注册表卸载项 -> 标准位置兜底），不做盘符假设。
-import os, sys, json, glob, base64, subprocess
+import os, sys, json, glob, base64
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+import wbcore as _C
 
 WD_DATA = os.path.join(os.environ.get("APPDATA") or os.path.expanduser("~/AppData/Roaming"), "WorkDaddy")
 
@@ -50,8 +51,8 @@ def at_rest_key():
     env = dict(os.environ, ELECTRON_RUN_AS_NODE="1")
     for exe in _wb_exes():
         try:
-            r = subprocess.run([exe, "-e", _KEY_JS_CODE], env=env,
-                               capture_output=True, text=True, timeout=20)
+            r = _C.run_hidden([exe, "-e", _KEY_JS_CODE], env=env,
+                              capture_output=True, text=True, timeout=20)
             for line in (r.stdout or "").splitlines():
                 if line.startswith("WD_KEY "):
                     return base64.b64decode(line[7:].strip())

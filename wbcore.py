@@ -2,7 +2,8 @@
 # -*- coding: utf-8 -*-
 # 双版共存管家 - WorkBuddy 侧核心逻辑（GUI 与守护模式共用）
 # 安装位置不硬编码：配置覆盖 -> 注册表卸载项 -> 常见默认路径
-import os, sys, json, shutil, datetime, subprocess, winreg
+import os, sys, json, shutil, datetime, ctypes, winreg, subprocess
+from ctypes import wintypes
 
 BS = chr(92); Q = chr(34)
 HOME = os.path.expanduser("~")
@@ -11,12 +12,18 @@ APPDATA = os.environ.get("APPDATA") or os.path.join(HOME, "AppData", "Roaming")
 
 def app_root():
     if getattr(sys, "frozen", False):
-        return os.path.dirname(os.path.abspath(sys.executable))
+        d = os.path.dirname(os.path.abspath(sys.executable))
+        # onedir 版位于 portable\WBCoexist\，配置与日志仍放回上层，两种发行版共用一份
+        if os.path.basename(d).lower() == "wbcoexist" and \
+                os.path.basename(os.path.dirname(d)).lower() == "portable":
+            return os.path.dirname(os.path.dirname(d))
+        return d
     return os.path.dirname(os.path.abspath(__file__))
 
 ROOT = app_root()
 CONFIG = os.path.join(ROOT, "config.json")
 LOGFILE = os.path.join(ROOT, "run.log")
+PORTABLE_EXE = os.path.join(ROOT, "portable", "WBCoexist", "WBCoexist.exe")
 DEFAULT = {"primary": "CN", "guard": False, "autostart": False,
            "paths": {"CN": "", "AI": ""}, "archive_dir": "",
            "checkin": {"token": "", "uid": "", "enterprise_id": ""}}
@@ -80,6 +87,22 @@ def log(msg):
     return line
 
 
+def no_window():
+    # GUI 进程没有控制台，子进程默认会新开黑窗；显式隐藏并禁用控制台创建
+    if os.name != "nt":
+        return {}
+    si = subprocess.STARTUPINFO()
+    si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+    si.wShowWindow = 0
+    return {"startupinfo": si,
+            "creationflags": getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)}
+
+
+def run_hidden(cmd, **kw):
+    kw.update(no_window())
+    return subprocess.run(cmd, **kw)
+
+
 def qv(k, v=""):
     try:
         a = winreg.OpenKey(winreg.HKEY_CURRENT_USER, k)
@@ -97,12 +120,53 @@ def islink(p):
         return False
 
 
+_TH32CS_SNAPPROCESS = 0x00000002
+
+
+class _PROCESSENTRY32W(ctypes.Structure):
+    _fields_ = [("dwSize", wintypes.DWORD),
+                ("cntUsage", wintypes.DWORD),
+                ("th32ProcessID", wintypes.DWORD),
+                ("th32DefaultHeapID", ctypes.c_void_p),
+                ("th32ModuleID", wintypes.DWORD),
+                ("cntThreads", wintypes.DWORD),
+                ("th32ParentProcessID", wintypes.DWORD),
+                ("pcPriClassBase", ctypes.c_long),
+                ("dwFlags", wintypes.DWORD),
+                ("szExeFile", wintypes.WCHAR * 260)]
+
+
+def process_names():
+    # Toolhelp 快照枚举，避免启动 tasklist 被主动防御当成进程侦察
+    k32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    k32.CreateToolhelp32Snapshot.restype = wintypes.HANDLE
+    k32.CreateToolhelp32Snapshot.argtypes = [wintypes.DWORD, wintypes.DWORD]
+    k32.Process32FirstW.restype = wintypes.BOOL
+    k32.Process32FirstW.argtypes = [wintypes.HANDLE, ctypes.POINTER(_PROCESSENTRY32W)]
+    k32.Process32NextW.restype = wintypes.BOOL
+    k32.Process32NextW.argtypes = [wintypes.HANDLE, ctypes.POINTER(_PROCESSENTRY32W)]
+    k32.CloseHandle.argtypes = [wintypes.HANDLE]
+    snap = k32.CreateToolhelp32Snapshot(_TH32CS_SNAPPROCESS, 0)
+    if not snap or snap == wintypes.HANDLE(-1).value:
+        return []
+    names = []
+    try:
+        e = _PROCESSENTRY32W()
+        e.dwSize = ctypes.sizeof(_PROCESSENTRY32W)
+        ok = k32.Process32FirstW(snap, ctypes.byref(e))
+        while ok:
+            names.append(e.szExeFile)
+            ok = k32.Process32NextW(snap, ctypes.byref(e))
+    finally:
+        k32.CloseHandle(snap)
+    return names
+
+
 def running(e):
     if not e:
         return False
-    r = subprocess.run(["tasklist", "/FI", "IMAGENAME eq " + e],
-                       capture_output=True, text=True, errors="replace")
-    return e.lower() in r.stdout.lower()
+    low = e.lower()
+    return any(n.lower() == low for n in process_names())
 
 
 def _uninstall_entries():
@@ -269,7 +333,7 @@ def autostart_set(on):
     try:
         k = winreg.CreateKey(winreg.HKEY_CURRENT_USER, RUNKEY)
         if on:
-            exe = os.path.join(ROOT, "WBCoexist.exe")
+            exe = PORTABLE_EXE if os.path.isfile(PORTABLE_EXE) else os.path.join(ROOT, "WBCoexist.exe")
             if os.path.isfile(exe):
                 val = Q + exe.replace("/", BS) + Q + " --daemon"
             else:

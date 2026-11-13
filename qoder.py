@@ -2,7 +2,8 @@
 # -*- coding: utf-8 -*-
 # Qoder 双版本共存核心逻辑（国际版 / 中国版共用浏览器连接器）
 # 与 wbcore.py 相互独立，可单独导入；不依赖第三方库、不需要管理员权限。
-import os, re, json, time, ctypes, hashlib, shutil, datetime, subprocess, winreg
+import os, re, json, time, ctypes, hashlib, shutil, datetime, winreg
+from ctypes import wintypes
 
 HOST_NAME = "com.qoder.app.connector"
 INTL_ORIGIN = "chrome-extension://gblapfbnbicdckfhkllcnfleiemhmgeb/"
@@ -148,24 +149,55 @@ def _find_install_dir(cn):
     return None, None
 
 
-def _tasklist_pids(names):
+_TH32CS_SNAPPROCESS = 0x00000002
+
+
+class _PROCESSENTRY32W(ctypes.Structure):
+    _fields_ = [("dwSize", wintypes.DWORD),
+                ("cntUsage", wintypes.DWORD),
+                ("th32ProcessID", wintypes.DWORD),
+                ("th32DefaultHeapID", ctypes.c_void_p),
+                ("th32ModuleID", wintypes.DWORD),
+                ("cntThreads", wintypes.DWORD),
+                ("th32ParentProcessID", wintypes.DWORD),
+                ("pcPriClassBase", ctypes.c_long),
+                ("dwFlags", wintypes.DWORD),
+                ("szExeFile", wintypes.WCHAR * 260)]
+
+
+def _proc_list():
+    # 用 Toolhelp 快照直接枚举进程，不启动 tasklist，避免被主动防御当成进程侦察
+    k32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    k32.CreateToolhelp32Snapshot.restype = wintypes.HANDLE
+    k32.CreateToolhelp32Snapshot.argtypes = [wintypes.DWORD, wintypes.DWORD]
+    k32.Process32FirstW.restype = wintypes.BOOL
+    k32.Process32FirstW.argtypes = [wintypes.HANDLE, ctypes.POINTER(_PROCESSENTRY32W)]
+    k32.Process32NextW.restype = wintypes.BOOL
+    k32.Process32NextW.argtypes = [wintypes.HANDLE, ctypes.POINTER(_PROCESSENTRY32W)]
+    k32.CloseHandle.argtypes = [wintypes.HANDLE]
+    snap = k32.CreateToolhelp32Snapshot(_TH32CS_SNAPPROCESS, 0)
+    if not snap or snap == wintypes.HANDLE(-1).value:
+        return []
+    out = []
     try:
-        out = subprocess.run(["tasklist", "/FO", "CSV", "/NH"],
-                             capture_output=True, text=True, errors="replace",
-                             timeout=20).stdout
-    except Exception:
-        return {}
-    wanted = set(n.lower() for n in names)
-    res = {}
-    for line in out.splitlines():
-        cols = [c.strip('"') for c in line.split('","')]
-        if len(cols) >= 2 and cols[0].strip('"').lower() in wanted:
-            key = cols[0].strip('"').lower()
-            try:
-                res.setdefault(key, []).append(int(cols[1].strip('"')))
-            except ValueError:
-                pass
-    return res
+        e = _PROCESSENTRY32W()
+        e.dwSize = ctypes.sizeof(_PROCESSENTRY32W)
+        ok = k32.Process32FirstW(snap, ctypes.byref(e))
+        while ok:
+            out.append((int(e.th32ProcessID), e.szExeFile))
+            ok = k32.Process32NextW(snap, ctypes.byref(e))
+    finally:
+        k32.CloseHandle(snap)
+    return out
+
+
+def _tasklist_pids(names):
+    wanted = dict((n.lower(), []) for n in names)
+    for pid, exe in _proc_list():
+        key = exe.lower()
+        if key in wanted:
+            wanted[key].append(pid)
+    return wanted
 
 
 def _running_pids(names):
@@ -481,23 +513,29 @@ def fix(rep=None, apply=True):
 
 
 def clean(rep=None):
+    # 归档而不是删除：杀软对批量删目录很敏感，且归档可随时找回
     if rep is None:
         rep = check()
     acts = []
+    stamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
     for d in rep["orphans"]:
+        dst = os.path.join(BACKUPS, "cleanup-" + stamp, "hosts", os.path.basename(d))
         try:
-            shutil.rmtree(d)
-            acts.append("已删除孤儿 host 副本 hosts\\" + os.path.basename(d)[:12] + "\\")
+            os.makedirs(os.path.dirname(dst), exist_ok=True)
+            shutil.move(d, dst)
+            acts.append("已归档孤儿 host 副本 hosts\\" + os.path.basename(d)[:12] + "\\ -> qoder-backups")
         except OSError as e:
-            acts.append("删除失败 " + os.path.basename(d)[:12] + ": " + str(e))
+            acts.append("归档失败 " + os.path.basename(d)[:12] + ": " + str(e))
     for c in rep["clients"]:
         if c["alive"] or not c["pid"]:
             continue
+        dst = os.path.join(BACKUPS, "cleanup-" + stamp, "clients", c["file"])
         try:
-            os.remove(c["path"])
-            acts.append("已删除失效中继记录 " + c["file"])
+            os.makedirs(os.path.dirname(dst), exist_ok=True)
+            shutil.move(c["path"], dst)
+            acts.append("已归档失效中继记录 " + c["file"])
         except OSError as e:
-            acts.append("删除中继记录失败: " + str(e))
+            acts.append("归档中继记录失败: " + str(e))
     return acts or ["没有可清理的项"]
 
 
