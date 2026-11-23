@@ -7,6 +7,14 @@ import sys, os, time, json, threading, queue
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import wbcore as C
 import qoder as Q
+try:
+    import pojia_bridge as P
+except Exception:
+    P = None
+try:
+    import patcher_bridge as WP
+except Exception:
+    WP = None
 
 BG = "#f4f6f9"
 CARD = "#ffffff"
@@ -192,11 +200,61 @@ def qoder_cli(mode):
     except Exception:
         pass
 
+def pojia_cli(mode):
+    if P is None:
+        print("破甲核心未加载（pojia_bridge / pojia_core.py 缺失）")
+        return
+    targets = []
+    for a in sys.argv:
+        if a.startswith("--targets="):
+            targets = [x for x in a.split("=", 1)[1].split(",") if x]
+    tg = targets or None
+    if mode == "status":
+        code, rows, text = P.status_json(tg)
+        print(text)
+        print("共 " + str(len(rows)) + " 个目标")
+    elif mode == "apply":
+        code, text = P.apply(tg)
+        print(text)
+    elif mode == "revert":
+        code, text = P.revert(tg)
+        print(text)
+    elif mode == "diagnose":
+        code, text = P.diagnose(tg)
+        print(text)
+
+def patcher_cli(mode):
+    if WP is None:
+        print("提示词破甲核心未加载（patcher_bridge / promptpatcher/ 缺失）")
+        return
+    if mode == "targets":
+        code, rows, text = WP.targets()
+        if text:
+            print(text)
+        for r in rows:
+            print("[" + r.get("label", "") + "] " + r.get("path", ""))
+        print("共 " + str(len(rows)) + " 个安装")
+    elif mode == "apply":
+        code, text = WP.apply()
+        print(text)
+    elif mode == "templates":
+        code, text = WP.apply(templates_only=True)
+        print(text)
+    elif mode == "verify":
+        code, text = WP.verify(verbose=("--verbose" in sys.argv))
+        print(text)
+    elif mode == "scan":
+        code, text = WP.scan()
+        print(text)
+    elif mode == "restore":
+        code, text = WP.restore()
+        print(text)
+
 def gui_main():
     import tkinter as tk
     from tkinter import scrolledtext, messagebox, simpledialog, ttk
     root = tk.Tk()
-    root.title("双版共存管家  v1.6")
+    root.title("双版共存管家  v1.7")
     root.geometry("720x780")
     root.resizable(False, False)
     root.configure(bg=BG)
@@ -666,6 +724,325 @@ def gui_main():
             messagebox.showinfo("一键签到", chr(10).join(res["rows"]))
 
         task("一键签到", work, done)
+
+    def on_pojia():
+        if P is None:
+            messagebox.showerror("破甲注入", "破甲核心未加载（pojia_bridge / pojia_core.py 缺失）。")
+            return
+        dlg = tk.Toplevel(root)
+        dlg.title("破甲注入 - AI 客户端政策管理")
+        dlg.configure(bg=BG)
+        dlg.resizable(False, False)
+        dlg.transient(root)
+
+        tk.Label(dlg, text="破甲注入  v" + str(P.version()), bg=BG, fg=TXT,
+                 font=("Microsoft YaHei", 13, "bold")).pack(anchor="w", padx=16, pady=(14, 2))
+        tk.Label(dlg, text="给 23 款 AI 客户端批量注入操作者政策 / 人格，可整块撤回；状态与独立破甲互相隔离。",
+                 bg=BG, fg=SUB, font=("Microsoft YaHei", 9)).pack(anchor="w", padx=16, pady=(0, 6))
+
+        state = {"vars": {}}
+
+        frm = tk.Frame(dlg, bg=CARD, highlightbackground=LINE, highlightthickness=1)
+        frm.pack(fill="both", expand=True, padx=16, pady=4)
+        cv = tk.Canvas(frm, bg=CARD, highlightthickness=0)
+        sb = ttk.Scrollbar(frm, orient="vertical", command=cv.yview)
+        inner = tk.Frame(cv, bg=CARD)
+        cv.configure(yscrollcommand=sb.set)
+        sb.pack(side="right", fill="y")
+        cv.pack(side="left", fill="both", expand=True)
+        cv.create_window((0, 0), window=inner, anchor="nw")
+        inner.bind("<Configure>", lambda e: cv.configure(scrollregion=cv.bbox("all")))
+
+        def render(rows):
+            for w in inner.winfo_children():
+                w.destroy()
+            state["vars"] = {}
+            if not rows:
+                tk.Label(inner, text="没有数据", bg=CARD, fg=SUB,
+                         font=("Microsoft YaHei", 10)).pack(padx=14, pady=10)
+                return
+            for r in rows:
+                key = r.get("key", "")
+                st = r.get("state", "")
+                name = r.get("name", key)
+                label = r.get("label", "")
+                rp = r.get("root", "")
+                vv = tk.IntVar(value=0 if st == "full" else 1)
+                state["vars"][key] = vv
+                ln = tk.Frame(inner, bg=CARD)
+                ln.pack(fill="x", padx=12, pady=(6, 0))
+                tk.Checkbutton(ln, variable=vv, bg=CARD, bd=0,
+                               activebackground=CARD, highlightthickness=0).pack(side="left")
+                color = GREEN if st == "full" else (ORANGE if st == "stale" else RED)
+                tk.Label(ln, text="[" + label + "]", fg=color, bg=CARD, width=10,
+                         anchor="w", font=("Microsoft YaHei", 9)).pack(side="left")
+                tk.Label(ln, text=name + "  (" + key + ")", bg=CARD, fg=TXT,
+                         font=("Microsoft YaHei", 9, "bold")).pack(side="left", padx=(4, 0))
+                if rp:
+                    tk.Label(inner, text="      " + rp, bg=CARD, fg=SUB,
+                             font=("Consolas", 8), anchor="w").pack(fill="x")
+            cv.configure(scrollregion=cv.bbox("all"))
+
+        msgvar = tk.StringVar(value="就绪")
+
+        def run(fn, label, after=None):
+            msgvar.set(label + "......")
+            def w():
+                try:
+                    res, err = fn(), None
+                except Exception as e:
+                    res, err = None, e
+                def fin():
+                    if err is not None:
+                        msgvar.set(label + " 出错")
+                        messagebox.showerror(label, str(err), parent=dlg)
+                    else:
+                        msgvar.set(label + " 完成")
+                        if after:
+                            after(res)
+                dlg.after(0, fin)
+            threading.Thread(target=w, daemon=True).start()
+
+        def refresh_rows():
+            def fn():
+                code, rows, text = P.status_json()
+                return rows
+            def after(rows):
+                render(rows)
+                add_log("[破甲] 状态已刷新，共 " + str(len(rows)) + " 个目标")
+            run(fn, "刷新状态", after)
+
+        def keys_checked():
+            return [k for k, vv in state["vars"].items() if vv.get()]
+
+        def do_apply():
+            ks = keys_checked()
+            if not ks:
+                messagebox.showinfo("破甲注入", "请先勾选目标。", parent=dlg)
+                return
+            if not messagebox.askyesno("破甲注入", "对选中的 " + str(len(ks)) + " 个目标执行注入？", parent=dlg):
+                return
+            def fn():
+                return P.apply(ks)
+            def after(res):
+                code, text = res
+                add_log("[破甲注入] 退出码 " + str(code) + chr(10) + text)
+                refresh_rows()
+            run(fn, "注入", after)
+
+        def do_revert():
+            ks = keys_checked()
+            if not ks:
+                messagebox.showinfo("破甲撤回", "请先勾选目标。", parent=dlg)
+                return
+            if not messagebox.askyesno("破甲撤回", "撤回选中的 " + str(len(ks)) + " 个目标的注入？", parent=dlg):
+                return
+            def fn():
+                return P.revert(ks)
+            def after(res):
+                code, text = res
+                add_log("[破甲撤回] 退出码 " + str(code) + chr(10) + text)
+                refresh_rows()
+            run(fn, "撤回", after)
+
+        def select_all():
+            for vv in state["vars"].values():
+                vv.set(1)
+
+        def select_none():
+            for vv in state["vars"].values():
+                vv.set(0)
+
+        foot = tk.Frame(dlg, bg=BG)
+        foot.pack(fill="x", padx=16, pady=(4, 6))
+        def mkbtn(parent, txt, cmd, blue=False):
+            return tk.Button(parent, text=txt, command=cmd, bd=0, relief="flat",
+                             bg=(BLUE if blue else CARD), fg=("#ffffff" if blue else TXT),
+                             padx=9, pady=5, font=("Microsoft YaHei", 9), cursor="hand2")
+        mkbtn(foot, "刷新状态", refresh_rows).pack(side="left", padx=(0, 5))
+        mkbtn(foot, "全选", select_all).pack(side="left", padx=(0, 5))
+        mkbtn(foot, "全不选", select_none).pack(side="left", padx=(0, 5))
+        mkbtn(foot, "注入选中", do_apply, True).pack(side="left", padx=(0, 5))
+        mkbtn(foot, "撤回选中", do_revert).pack(side="left", padx=(0, 5))
+        mkbtn(foot, "关闭", dlg.destroy).pack(side="right")
+        tk.Label(dlg, textvariable=msgvar, bg=BG, fg=SUB,
+                 font=("Microsoft YaHei", 8), anchor="w").pack(fill="x", padx=18, pady=(0, 10))
+
+        refresh_rows()
+
+    def on_promptpatcher():
+        if WP is None:
+            messagebox.showerror("提示词破甲",
+                                 "提示词破甲引擎未加载（patcher_bridge / promptpatcher/ 缺失）。")
+            return
+        dlg = tk.Toplevel(root)
+        dlg.title("提示词破甲 - WorkBuddy 系统提示词注入")
+        dlg.configure(bg=BG)
+        dlg.geometry("660x560")
+        dlg.transient(root)
+
+        tk.Label(dlg, text="WorkBuddy 提示词破甲  v" + str(WP.version()), bg=BG, fg=TXT,
+                 font=("Microsoft YaHei", 13, "bold")).pack(anchor="w", padx=16, pady=(14, 2))
+        tk.Label(dlg, text="备份 / 注入 God Mode 政策 / 官方还原 / 六轨校验，覆盖国内版与国际版。",
+                 bg=BG, fg=SUB, font=("Microsoft YaHei", 9)).pack(anchor="w", padx=16, pady=(0, 6))
+
+        st = {"targets": [], "vars": {}, "code": 1, "text": "尚未校验"}
+
+        frm = tk.Frame(dlg, bg=CARD, highlightbackground=LINE, highlightthickness=1)
+        frm.pack(fill="x", padx=16, pady=4)
+        tk.Label(frm, text="检测到的客户端安装：", bg=CARD, fg=SUB,
+                 font=("Microsoft YaHei", 9)).pack(anchor="w", padx=10, pady=(8, 2))
+        rows_frm = tk.Frame(frm, bg=CARD)
+        rows_frm.pack(fill="x", padx=10, pady=(0, 8))
+
+        out = scrolledtext.ScrolledText(dlg, height=14, wrap="word", bg="#fbfcfe", fg=TXT,
+                                        font=("Consolas", 9), relief="flat", bd=1)
+        out.pack(fill="both", expand=True, padx=16, pady=(4, 4))
+        msgvar = tk.StringVar(value="就绪")
+        tk.Label(dlg, textvariable=msgvar, bg=BG, fg=SUB,
+                 font=("Microsoft YaHei", 8), anchor="w").pack(fill="x", padx=18, pady=(0, 8))
+
+        def show(code, text):
+            out.configure(state="normal")
+            out.delete("1.0", "end")
+            out.insert("1.0", text or "")
+            out.configure(state="disabled")
+            st["code"], st["text"] = code, text or ""
+
+        def render_targets(rows):
+            for w in rows_frm.winfo_children():
+                w.destroy()
+            st["vars"] = {}
+            if not rows:
+                tk.Label(rows_frm, text="未检测到安装，请先启动一次 WorkBuddy 登录后再试。",
+                         bg=CARD, fg=RED, font=("Microsoft YaHei", 9)).pack(anchor="w")
+                return
+            for r in rows:
+                key = r.get("key", "")
+                vv = tk.IntVar(value=1)
+                st["vars"][key] = vv
+                tk.Checkbutton(rows_frm, variable=vv, bg=CARD, bd=0,
+                               activebackground=CARD, highlightthickness=0).pack(side="left")
+                tk.Label(rows_frm, text=r.get("label", "") + "  " + key,
+                         bg=CARD, fg=TXT, font=("Consolas", 8)).pack(side="left", padx=(0, 12))
+
+        def run(fn, label, after=None, confirm=None):
+            if confirm and not messagebox.askyesno(label, confirm, parent=dlg):
+                return
+            msgvar.set(label + "......")
+
+            def w():
+                try:
+                    res, err = fn(), None
+                except Exception as e:
+                    res, err = None, e
+
+                def fin():
+                    if err is not None:
+                        msgvar.set(label + " 出错")
+                        messagebox.showerror(label, str(err), parent=dlg)
+                    else:
+                        msgvar.set(label + " 完成")
+                        if after:
+                            after(res)
+                dlg.after(0, fin)
+            threading.Thread(target=w, daemon=True).start()
+
+        def refresh_targets():
+            def fn():
+                code, rows, text = WP.targets()
+                return rows
+            def after(rows):
+                st["targets"] = rows
+                render_targets(rows)
+                add_log("[提示词破甲] 检测到 " + str(len(rows)) + " 个安装")
+            run(fn, "检测安装", after)
+
+        def do_verify(verbose=False):
+            def fn():
+                return WP.verify(verbose=verbose)
+            def after(res):
+                code, text = res
+                show(code, text)
+                add_log("[提示词破甲] 校验退出码 " + str(code))
+            run(fn, "六轨校验", after)
+
+        def do_scan():
+            def fn():
+                return WP.scan()
+            run(fn, "标签扫描", lambda res: show(res[0], res[1]))
+
+        def do_apply(templates_only=False):
+            def fn():
+                return WP.apply(templates_only=templates_only)
+            def after(res):
+                code, text = res
+                show(code, text)
+                add_log("[提示词破甲] 注入退出码 " + str(code))
+            name = "仅模板注入" if templates_only else "全量注入"
+            run(fn, name, after,
+                confirm=("对全部检测到的 WorkBuddy 执行" + name + "？\n"
+                         "（引擎内含进程门禁，客户端在运行会给出警告；"
+                         "建议完全退出后部署，补丁只对新会话生效。）"))
+
+        def do_restore():
+            def fn():
+                return WP.restore()
+            def after(res):
+                code, text = res
+                show(code, text)
+                add_log("[提示词破甲] 还原退出码 " + str(code))
+            run(fn, "官方还原", after, confirm="从官方原始备份还原所有模板与神格？")
+
+        def edit_buffer():
+            ok, text = WP.get_buffer()
+            if not ok:
+                messagebox.showerror("自定义策略", "读取 custom_input.txt 失败。", parent=dlg)
+                return
+            ed = tk.Toplevel(dlg)
+            ed.title("自定义提示词策略 - custom_input.txt")
+            ed.configure(bg=BG)
+            ed.geometry("760x600")
+            box = scrolledtext.ScrolledText(ed, wrap="none", bg="#fbfcfe", fg=TXT,
+                                            font=("Consolas", 9), relief="flat", bd=1)
+            box.pack(fill="both", expand=True, padx=12, pady=12)
+            box.insert("1.0", text)
+
+            def save():
+                ok2, msg = WP.set_buffer(box.get("1.0", "end"))
+                if ok2:
+                    messagebox.showinfo("自定义策略", "已保存：" + msg, parent=ed)
+                    ed.destroy()
+                else:
+                    messagebox.showerror("自定义策略", "保存失败：" + msg, parent=ed)
+            bar = tk.Frame(ed, bg=BG)
+            bar.pack(fill="x", padx=12, pady=(0, 12))
+            tk.Button(bar, text="保存", command=save, bg=BLUE, fg="#ffffff", bd=0,
+                      relief="flat", padx=12, pady=5, font=("Microsoft YaHei", 9)).pack(side="right")
+            tk.Button(bar, text="取消", command=ed.destroy, bg=CARD, fg=TXT, bd=0,
+                      relief="flat", padx=12, pady=5, font=("Microsoft YaHei", 9)).pack(side="right", padx=(0, 6))
+
+        def mkbtn(parent, txt, cmd, blue=False):
+            return tk.Button(parent, text=txt, command=cmd, bd=0, relief="flat",
+                             bg=(BLUE if blue else CARD), fg=("#ffffff" if blue else TXT),
+                             padx=8, pady=5, font=("Microsoft YaHei", 9), cursor="hand2")
+
+        foot = tk.Frame(dlg, bg=BG)
+        foot.pack(fill="x", padx=16, pady=(2, 4))
+        mkbtn(foot, "刷新安装", refresh_targets).pack(side="left", padx=(0, 4))
+        mkbtn(foot, "六轨校验", lambda: do_verify(False)).pack(side="left", padx=(0, 4))
+        mkbtn(foot, "详细校验", lambda: do_verify(True)).pack(side="left", padx=(0, 4))
+        mkbtn(foot, "标签扫描", do_scan).pack(side="left", padx=(0, 4))
+        mkbtn(foot, "编辑策略", edit_buffer).pack(side="left", padx=(0, 4))
+        row2 = tk.Frame(dlg, bg=BG)
+        row2.pack(fill="x", padx=16, pady=(0, 2))
+        mkbtn(row2, "全量注入", lambda: do_apply(False), True).pack(side="left", padx=(0, 4))
+        mkbtn(row2, "仅模板注入", lambda: do_apply(True)).pack(side="left", padx=(0, 4))
+        mkbtn(row2, "官方还原", do_restore).pack(side="left", padx=(0, 4))
+        mkbtn(row2, "关闭", dlg.destroy).pack(side="right")
+
+        refresh_targets()
+        do_verify(False)
 
     def on_scan():
         def work():
@@ -1158,6 +1535,8 @@ def gui_main():
     gbtn(1, 0, "查看已安装", "列出本机全部版本与路径", on_scan)
     gbtn(1, 1, "清理垃圾", "缓存日志 + 失效残留", on_clean)
     gbtn(1, 2, "账号与 Token", "查看会话、签到、手动填写", on_accounts)
+    gbtn(2, 0, "破甲注入", "给 23 款 AI 客户端注入政策 / 人格", on_pojia)
+    gbtn(2, 1, "提示词破甲", "WorkBuddy 系统提示词 / God Mode 注入", on_promptpatcher)
 
     # ---------- 行为选项 ----------
     opt = tk.Frame(root, bg=BG)
@@ -1208,6 +1587,7 @@ def gui_main():
     add_log("「WorkBuddy 每日签到」自动发现 token → 查状态 → 未签到则直接签到")
     add_log("「清理垃圾」先列出勾选清单，只清缓存与日志，配置/会话/数据库不动")
     add_log("勾选「后台守护」后，每 8 秒自动修回被抢占的归属")
+    add_log("「破甲注入」给 23 款 AI 客户端批量注入操作者政策 / 人格，可整块撤回")
 
     def guard_loop():
         while True:
@@ -1276,6 +1656,26 @@ def main():
         checkin_cli()
     elif "--checkin" in sys.argv:
         checkin_cli(do=True)
+    elif "--pojia-status" in sys.argv:
+        pojia_cli("status")
+    elif "--pojia-apply" in sys.argv:
+        pojia_cli("apply")
+    elif "--pojia-revert" in sys.argv:
+        pojia_cli("revert")
+    elif "--pojia-diagnose" in sys.argv:
+        pojia_cli("diagnose")
+    elif "--wpp-targets" in sys.argv:
+        patcher_cli("targets")
+    elif "--wpp-apply" in sys.argv:
+        patcher_cli("apply")
+    elif "--wpp-templates" in sys.argv:
+        patcher_cli("templates")
+    elif "--wpp-verify" in sys.argv:
+        patcher_cli("verify")
+    elif "--wpp-scan" in sys.argv:
+        patcher_cli("scan")
+    elif "--wpp-restore" in sys.argv:
+        patcher_cli("restore")
     else:
         gui_main()
 
